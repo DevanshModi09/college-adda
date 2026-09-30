@@ -22,7 +22,7 @@ await roomsService.seedDefaults();
 await timetableService.importCatalogIfEmpty(); // real CSE II-year timetables from server/catalog
 
 const players = [
-  { username: 'devansh', name: 'Devansh Modi', branch: 'CSE', year: 2, section: 'B', bio: 'Building College Adda. Looking for a SIH team.', interests: ['DSA', 'React', 'Node'] },
+  { username: 'devanshmodi', name: 'Devansh Modi', branch: 'CSE', year: 2, section: 'B', bio: 'Building College Adda. Looking for a SIH team.', interests: ['DSA', 'React', 'Node'] },
   { username: 'aarav', name: 'Aarav Sharma', branch: 'CSE', year: 2, section: 'SA', bio: 'ML nerd, chai enthusiast.', interests: ['ML', 'Python', 'Kaggle'] },
   { username: 'priya', name: 'Priya Jain', branch: 'CSE', year: 2, section: 'C', bio: 'Frontend + design. Ask me about Figma.', interests: ['React', 'UI/UX', 'Figma'] },
   { username: 'kabir', name: 'Kabir Singh', branch: 'ECE', year: 4, section: 'A', bio: 'Robotics club lead.', interests: ['Robotics', 'Arduino', 'C++'] },
@@ -36,8 +36,8 @@ for (const p of players) {
     ? existing.id
     : (await authService.register({ ...p, password: PASSWORD })).user.id;
 }
-const me = ids.devansh!;
-await usersRepo.promoteAdmins(['devansh']); // demo admin: posts official deadlines
+const me = ids.devanshmodi!;
+await usersRepo.promoteAdmins(['devanshmodi']); // demo admin: posts official deadlines
 const admin = (await usersRepo.findById(me))!;
 
 if (!(await deadlinesService.list(admin)).length) {
@@ -66,9 +66,9 @@ if (!(await eventsService.listUpcoming(me)).length) {
   };
   const evs = [
     // Only admins create events, so the demo admin hosts them all.
-    { host: 'devansh', title: 'Hack night', category: 'Hackathon', location: 'Tech Lab', startAt: at(1, 19), endAt: at(1, 23), description: 'Bring a laptop and an idea. Pizza at 9.' },
-    { host: 'devansh', title: 'SIH team formation', category: 'Hackathon', location: 'Seminar Hall', startAt: at(4, 17), endAt: at(4, 18), description: 'Need 2 frontend + 1 ML person.' },
-    { host: 'devansh', title: 'DBMS revision', category: 'Study Group', location: 'Central Library', startAt: at(6, 16), endAt: at(6, 18), description: 'Normalization + transactions before the mid-sem.' },
+    { host: 'devanshmodi', title: 'Hack night', category: 'Hackathon', location: 'Tech Lab', startAt: at(1, 19), endAt: at(1, 23), description: 'Bring a laptop and an idea. Pizza at 9.' },
+    { host: 'devanshmodi', title: 'SIH team formation', category: 'Hackathon', location: 'Seminar Hall', startAt: at(4, 17), endAt: at(4, 18), description: 'Need 2 frontend + 1 ML person.' },
+    { host: 'devanshmodi', title: 'DBMS revision', category: 'Study Group', location: 'Central Library', startAt: at(6, 16), endAt: at(6, 18), description: 'Normalization + transactions before the mid-sem.' },
   ];
   for (const e of evs) {
     const created = await eventsService.create((await usersRepo.findById(ids[e.host]!))!, { title: e.title, category: e.category, location: e.location, startAt: e.startAt, endAt: e.endAt, description: e.description });
@@ -106,9 +106,9 @@ if (!(await feedService.list(admin, { limit: 1 })).length) {
     { by: 'kabir', body: 'Robotics club is taking new members this week. Come to the Tech Lab at 5, bring curiosity (and snacks).' },
     { by: 'priya', body: 'Hot take: the maggi point beats the food court. Fight me at the Game Zone, XOXO, best of 3.' },
     { by: 'aarav', body: 'Anyone else’s DBMS assignment 3 just… refusing to normalise? 😭' },
-    { by: 'devansh', body: 'College Adda is live! Walk around the campus, grab a chai with friends, and post here. Welcome 👋' },
+    { by: 'devanshmodi', body: 'College Adda is live! Walk around the campus, grab a chai with friends, and post here. Welcome 👋' },
   ];
-  const liked = [['priya', 'aarav', 'ananya', 'kabir'], ['devansh'], ['aarav', 'ananya'], ['priya', 'devansh', 'kabir'], []];
+  const liked = [['priya', 'aarav', 'ananya', 'kabir'], ['devanshmodi'], ['aarav', 'ananya'], ['priya', 'devanshmodi', 'kabir'], []];
   for (const [i, p] of posts.entries()) {
     const post = await feedService.create(await user(p.by), { body: p.body });
     for (const fan of liked[i] ?? []) await feedService.toggleLike(await user(fan), post.id);

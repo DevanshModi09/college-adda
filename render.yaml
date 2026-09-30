@@ -16,7 +16,7 @@ services:
       - key: NODE_VERSION
         value: "24"
       - key: ADMIN_USERNAMES
-        value: devansh
+        value: devanshmodi
       # From the Neon console (Connect) or `npx neon@latest connection-string`. Render asks for these
       # when you apply the blueprint. Pooled URL for the app, direct URL for migrations.
       - key: DATABASE_URL
