@@ -4,7 +4,7 @@ import { env } from '../config/env.ts';
 import { optionalAuth, requireAuth } from '../middleware/auth.ts';
 import { authController } from '../controllers/auth.controller.ts';
 import { assignmentsController, attendanceController, deadlinesController, timetableController } from '../controllers/planner.controller.ts';
-import { eventsController, friendsController, messagesController, noticesController, peopleController, roomsController } from '../controllers/social.controller.ts';
+import { eventsController, feedController, friendsController, messagesController, noticesController, peopleController, roomsController } from '../controllers/social.controller.ts';
 
 const limiter = (windowMs: number, limit: number) =>
   rateLimit({
@@ -17,6 +17,7 @@ const limiter = (windowMs: number, limit: number) =>
   });
 
 const authLimiter = limiter(15 * 60e3, 30);
+const postLimiter = limiter(10 * 60e3, 20); // posting to the feed
 // Each guest login creates an account, so cap them per IP separately.
 const guestLimiter = limiter(60 * 60e3, 20);
 
@@ -47,6 +48,12 @@ export function apiRouter(): Router {
   api.get('/timetable/free-rooms', timetableController.freeRooms);
   api.post('/timetable', timetableController.create);
   api.delete('/timetable/:id', timetableController.remove);
+
+  api.get('/feed', feedController.list);
+  api.post('/feed', postLimiter, feedController.create);
+  api.post('/feed/:id/like', feedController.like);
+  api.get('/feed/:id/image', feedController.image);
+  api.delete('/feed/:id', feedController.remove);
 
   api.get('/notices', noticesController.list);
   api.post('/notices', noticesController.create);

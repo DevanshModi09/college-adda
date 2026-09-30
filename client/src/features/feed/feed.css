@@ -1,0 +1,89 @@
+.feed-compose {
+  margin-bottom: var(--gap);
+}
+.feed-compose__form {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.feed-compose .textarea {
+  width: 100%;
+}
+.feed-compose__foot {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.feed-compose__preview {
+  position: relative;
+  align-self: flex-start;
+}
+.feed-compose__preview img {
+  display: block;
+  max-width: min(320px, 100%);
+  max-height: 240px;
+  border: 3px solid var(--frame);
+}
+.feed-compose__preview .icon-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 720px;
+}
+.post__head {
+  align-items: center;
+  gap: 12px;
+}
+.post__name {
+  font-size: 24px;
+  line-height: 1.1;
+}
+.post__body {
+  margin-top: 12px;
+  font-size: 24px;
+  line-height: 1.3;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.post__img {
+  display: block;
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  margin-top: 12px;
+  background: var(--bg-deep);
+  border: 3px solid var(--frame);
+}
+.post__foot {
+  margin-top: 12px;
+  justify-content: space-between;
+}
+.post__like {
+  background: none;
+  border: 2px solid var(--frame);
+  padding: 2px 12px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 22px;
+  cursor: pointer;
+}
+.post__like:hover {
+  border-color: var(--pink);
+}
+.post__like.is-liked {
+  border-color: var(--pink);
+  color: var(--pink);
+}
+
+@media (max-width: 760px) {
+  .feed-compose__form > .avatar,
+  .feed-compose__form > :first-child {
+    display: none;
+  }
+}

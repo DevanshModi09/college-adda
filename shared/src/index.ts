@@ -68,6 +68,21 @@ export interface Notice {
   createdAt: number;
 }
 
+/** A thought on the campus feed. */
+export interface Post {
+  id: string;
+  body: string;
+  /** URL of the attached photo, if any. */
+  image: string | null;
+  author: PublicUser | null;
+  likes: number;
+  /** The viewer liked it. */
+  liked: boolean;
+  /** Viewer may delete it (the author, or an admin). */
+  canDelete: boolean;
+  createdAt: number;
+}
+
 /** A class section: branch + year + letter. `key` is 'CSE|3|B'. */
 export interface Section {
   key: string;
@@ -322,6 +337,7 @@ export type ServerMessage =
   | { type: 'events:changed' }
   | { type: 'deadlines:changed' }
   | { type: 'notices:changed'; sectionKey: string }
+  | { type: 'feed:changed' }
   | { type: 'friends:changed'; kind: 'request' | 'accepted' | 'removed'; from: PublicUser }
   | { type: 'error'; error: string }
   | { type: 'world:state'; players: WorldPlayer[]; you: WorldPlayer; plates: Record<string, Plate[]> }

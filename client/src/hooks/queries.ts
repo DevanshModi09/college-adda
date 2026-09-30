@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { AssignmentStatus, AttendanceStatus, CampusEvent, ClassSlot, Deadline, SubjectAssignments } from '@adda/shared';
+import type { AssignmentStatus, AttendanceStatus, CampusEvent, ClassSlot, Deadline, Post, SubjectAssignments } from '@adda/shared';
 import { api, type ClassBody, type DeadlineBody, type EventBody, type PeopleQuery, type RoomBody } from '../lib/api';
 import { keys, queryClient } from '../lib/queryClient';
 import { toast } from '../stores/toasts';
@@ -239,5 +239,41 @@ export const useDeleteNotice = () =>
   useMutation({
     mutationFn: ({ id }: { id: string; sectionKey: string }) => api.notices.remove(id),
     onSuccess: (_r, { sectionKey }) => refreshNotices(sectionKey),
+    onError,
+  });
+
+// ---------- feed ----------
+export const useFeed = () => useQuery({ queryKey: keys.feed, queryFn: () => api.feed.list() });
+
+const replacePost = (p: Post) => queryClient.setQueryData<Post[]>(keys.feed, (prev) => prev?.map((x) => (x.id === p.id ? p : x)));
+
+export const useCreatePost = () =>
+  useMutation({
+    mutationFn: (body: { body: string; image?: string }) => api.feed.create(body),
+    onSuccess: (p) => queryClient.setQueryData<Post[]>(keys.feed, (prev) => [p, ...(prev ?? []).filter((x) => x.id !== p.id)]),
+  });
+
+export const useLikePost = () =>
+  useMutation({
+    mutationFn: (id: string) => api.feed.like(id),
+    // Optimistic: flip the heart right away.
+    onMutate: (id) => {
+      const before = queryClient.getQueryData<Post[]>(keys.feed);
+      queryClient.setQueryData<Post[]>(keys.feed, (prev) =>
+        prev?.map((p) => (p.id === id ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) } : p))
+      );
+      return { before };
+    },
+    onSuccess: replacePost,
+    onError: (err, _id, ctx) => {
+      queryClient.setQueryData(keys.feed, ctx?.before);
+      onError(err);
+    },
+  });
+
+export const useDeletePost = () =>
+  useMutation({
+    mutationFn: (id: string) => api.feed.remove(id),
+    onSuccess: (_r, id) => queryClient.setQueryData<Post[]>(keys.feed, (prev) => prev?.filter((p) => p.id !== id)),
     onError,
   });

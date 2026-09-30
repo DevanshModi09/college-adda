@@ -22,6 +22,7 @@ import { AttendancePage } from './features/attendance/AttendancePage';
 import { AttendanceSetupPage } from './features/attendance/AttendanceSetupPage';
 import { AssignmentsPage } from './features/assignments/AssignmentsPage';
 import { NoticesPage } from './features/notices/NoticesPage';
+import { FeedPage } from './features/feed/FeedPage';
 
 function LegacyRoomRedirect() {
   const { roomId } = useParams();
@@ -51,6 +52,7 @@ export function App() {
     <Routes>
       <Route element={<Layout user={user} onLogout={logout} />}>
         <Route index element={<HomePage user={user} />} />
+        <Route path="feed" element={<FeedPage me={user} />} />
         <Route path="campus" element={<CampusPage me={user} />} />
         <Route path="assignments" element={<AssignmentsPage />} />
         <Route path="deadlines" element={<DeadlinesPage me={user} />} />

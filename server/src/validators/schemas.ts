@@ -166,6 +166,17 @@ export const noticeCreateSchema = z.object({
 
 export const noticePinSchema = z.object({ pinned: z.boolean() });
 
+export const postCreateSchema = z.object({
+  body: text(500).default(''),
+  /** Optional photo as a data URL; the service checks the bytes. */
+  image: z.string().max(2_200_000).optional(),
+});
+
+export const feedQuerySchema = z.object({
+  before: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(30),
+});
+
 export const idParam = z.object({ id: z.string().regex(/^[a-f0-9]{8,40}$/, 'Bad id') });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

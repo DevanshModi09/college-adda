@@ -248,4 +248,28 @@ export const migrations: string[] = [
   );
   CREATE INDEX idx_notices_section ON notices(section_key, pinned DESC, created_at DESC);
   `,
+
+  // 10: campus feed. Anyone can post a thought (text and/or one photo); likes are one row
+  // per (post, user). Photos live in their own table so listing posts never loads the bytes.
+  `
+  CREATE TABLE posts (
+    id         TEXT PRIMARY KEY,
+    author_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body       TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX idx_posts_created ON posts(created_at DESC);
+
+  CREATE TABLE post_images (
+    post_id TEXT PRIMARY KEY REFERENCES posts(id) ON DELETE CASCADE,
+    mime    TEXT NOT NULL,
+    data    BLOB NOT NULL
+  );
+
+  CREATE TABLE post_likes (
+    post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    PRIMARY KEY (post_id, user_id)
+  );
+  `,
 ];

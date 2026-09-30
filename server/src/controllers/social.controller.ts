@@ -6,10 +6,13 @@ import { messagesService } from '../services/messages.service.ts';
 import { roomsService } from '../services/rooms.service.ts';
 import { eventsService } from '../services/events.service.ts';
 import { noticesService } from '../services/notices.service.ts';
+import { feedService } from '../services/feed.service.ts';
 import {
   dmQuerySchema,
   dmSendSchema,
   eventCreateSchema,
+  feedQuerySchema,
+  postCreateSchema,
   idParam,
   noticeCreateSchema,
   noticePinSchema,
@@ -104,6 +107,27 @@ export const noticesController = {
   },
   remove(req: Request, res: Response) {
     noticesService.remove(currentUser(req), idParam.parse(req.params).id);
+    res.status(204).end();
+  },
+};
+
+export const feedController = {
+  list(req: Request, res: Response) {
+    res.json(feedService.list(currentUser(req), feedQuerySchema.parse(req.query)));
+  },
+  create(req: Request, res: Response) {
+    res.status(201).json(feedService.create(currentUser(req), postCreateSchema.parse(req.body)));
+  },
+  like(req: Request, res: Response) {
+    res.json(feedService.toggleLike(currentUser(req), idParam.parse(req.params).id));
+  },
+  image(req: Request, res: Response) {
+    const img = feedService.image(idParam.parse(req.params).id);
+    // Posts never change their photo, so browsers can keep it.
+    res.set({ 'Content-Type': img.mime, 'Cache-Control': 'private, max-age=86400, immutable' }).send(Buffer.from(img.data));
+  },
+  remove(req: Request, res: Response) {
+    feedService.remove(currentUser(req), idParam.parse(req.params).id);
     res.status(204).end();
   },
 };

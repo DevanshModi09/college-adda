@@ -205,6 +205,41 @@ describe('notice board', () => {
   });
 });
 
+describe('feed', () => {
+  const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+  it('posts thoughts and photos, toggles likes, and only lets authors or admins delete', async () => {
+    const a = await register('feed_ana', 'Ana');
+    const b = await register('feed_bo', 'Bo');
+
+    const text = await call(a.cookie, '/feed', 'POST', { body: 'canteen samosas hit different today' });
+    assert.equal(text.status, 201);
+    assert.equal(text.json.image, null);
+    assert.equal((await call(a.cookie, '/feed', 'POST', { body: '  ' })).status, 400);
+
+    const photo = await call(b.cookie, '/feed', 'POST', { body: '', image: `data:image/png;base64,${PNG}` });
+    assert.equal(photo.status, 201);
+    const img = await fetch(base + photo.json.image, { headers: { cookie: a.cookie } });
+    assert.equal(img.headers.get('content-type'), 'image/png');
+    assert.equal(Buffer.from(await img.arrayBuffer()).toString('base64'), PNG);
+
+    // The claimed type doesn't matter: the bytes must really be a raster image (no SVG).
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>').toString('base64');
+    assert.equal((await call(b.cookie, '/feed', 'POST', { image: `data:image/png;base64,${svg}` })).status, 400);
+    assert.equal((await call(b.cookie, '/feed', 'POST', { image: `data:image/svg+xml;base64,${svg}` })).status, 400);
+
+    const liked = await call(b.cookie, `/feed/${text.json.id}/like`, 'POST');
+    assert.deepEqual([liked.json.likes, liked.json.liked], [1, true]);
+    const unliked = await call(b.cookie, `/feed/${text.json.id}/like`, 'POST');
+    assert.deepEqual([unliked.json.likes, unliked.json.liked], [0, false]);
+
+    const feed = (await call(a.cookie, '/feed')).json;
+    assert.deepEqual(feed.slice(0, 2).map((p: { id: string }) => p.id), [photo.json.id, text.json.id]);
+    assert.equal((await call(b.cookie, `/feed/${text.json.id}`, 'DELETE')).status, 403);
+    assert.equal((await call(a.cookie, `/feed/${text.json.id}`, 'DELETE')).status, 204);
+  });
+});
+
 describe('official timetable catalog', () => {
   it('imports every section, is public to browse, and locks official slots to admins', async () => {
     const r = timetableService.importCatalog(path.join(CATALOG_DIR, 'cse-y2-2026-27.json'));

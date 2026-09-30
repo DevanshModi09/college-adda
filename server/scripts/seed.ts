@@ -9,6 +9,7 @@ import { messagesService } from '../src/services/messages.service.ts';
 import { friendsService } from '../src/services/friends.service.ts';
 import { roomsService } from '../src/services/rooms.service.ts';
 import { noticesService } from '../src/services/notices.service.ts';
+import { feedService } from '../src/services/feed.service.ts';
 import { usersRepo } from '../src/repositories/users.repo.ts';
 import { eventsRepo } from '../src/repositories/events.repo.ts';
 
@@ -97,6 +98,22 @@ if (!noticesService.list(admin, 'CSE|2|B').length) {
   noticesService.create(admin, { body: 'Mid-sem exams start 13 Oct. Admit cards from the exam cell on Friday, bring your ID.', section: 'CSE|2|B', pinned: true });
   noticesService.create(admin, { body: 'DBMS lab shifted to Lab 4 this week. Bring your lab file, sir is checking.', section: 'CSE|2|B', pinned: false });
   noticesService.create(admin, { body: 'Anyone found a black boAt charger in 2nd floor washroom corridor? DM me.', section: 'CSE|2|B', pinned: false });
+}
+
+if (!feedService.list(admin, { limit: 1 }).length) {
+  const user = (name: string) => usersRepo.findById(ids[name]!)!;
+  const posts = [
+    { by: 'ananya', body: 'Solved the DP question from yesterday’s contest after 3 hours. Sleep is for the weak.' },
+    { by: 'kabir', body: 'Robotics club is taking new members this week. Come to the Tech Lab at 5, bring curiosity (and snacks).' },
+    { by: 'priya', body: 'Hot take: the maggi point beats the food court. Fight me at the Game Zone, XOXO, best of 3.' },
+    { by: 'aarav', body: 'Anyone else’s DBMS assignment 3 just… refusing to normalise? 😭' },
+    { by: 'devansh', body: 'College Adda is live! Walk around the campus, grab a chai with friends, and post here. Welcome 👋' },
+  ];
+  const liked = [['priya', 'aarav', 'ananya', 'kabir'], ['devansh'], ['aarav', 'ananya'], ['priya', 'devansh', 'kabir'], []];
+  for (const [i, p] of posts.entries()) {
+    const post = feedService.create(user(p.by), { body: p.body });
+    for (const fan of liked[i] ?? []) feedService.toggleLike(user(fan), post.id);
+  }
 }
 
 console.log(`Seeded ${players.length} demo players (password: ${PASSWORD}).`);

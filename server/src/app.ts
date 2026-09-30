@@ -26,7 +26,10 @@ export function createApp() {
       },
     })
   );
-  app.use(express.json({ limit: '100kb' }));
+  // Feed posts can carry a photo (base64, already downscaled by the client); everything else stays small.
+  const smallJson = express.json({ limit: '100kb' });
+  const feedJson = express.json({ limit: '3mb' });
+  app.use((req, res, next) => (req.method === 'POST' && req.path === '/api/feed' ? feedJson : smallJson)(req, res, next));
   app.use(cookieParser());
 
   app.use((req, res, next) => {

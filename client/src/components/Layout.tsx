@@ -9,6 +9,7 @@ import { GameModal } from './GameModal';
 
 const LINKS = [
   { to: '/', label: 'HOME', end: true },
+  { to: '/feed', label: 'FEED' },
   { to: '/campus', label: 'CAMPUS' },
   { to: '/deadlines', label: 'DEADLINES' },
   { to: '/assignments', label: 'ASSIGNMENTS' },

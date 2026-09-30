@@ -714,7 +714,7 @@ a.line:hover {
 
 /* ============ responsive ============ */
 /* Laptops: the 10-item nav gets its own row instead of scrolling out of view. */
-@media (max-width: 1440px) {
+@media (max-width: 1680px) {
   .topbar {
     flex-wrap: wrap;
     row-gap: 10px;

@@ -132,6 +132,9 @@ class RealtimeClient {
       case 'error':
         toast(msg.error.toUpperCase(), { kind: 'bad' });
         break;
+      case 'feed:changed':
+        queryClient.invalidateQueries({ queryKey: keys.feed });
+        break;
       case 'notices:changed':
         queryClient.invalidateQueries({ queryKey: keys.notices(msg.sectionKey) });
         break;

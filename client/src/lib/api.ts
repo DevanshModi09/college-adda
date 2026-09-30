@@ -14,6 +14,7 @@ import type {
   FriendStatus,
   FriendsOverview,
   Notice,
+  Post,
   Person,
   Priority,
   PublicUser,
@@ -174,6 +175,12 @@ export const api = {
     list: () => get<RoomWithMembers[]>('/rooms'),
     create: (body: RoomBody) => post<Room>('/rooms', body),
     remove: (id: string) => del(`/rooms/${id}`),
+  },
+  feed: {
+    list: (before?: number) => get<Post[]>(`/feed${before ? `?before=${before}` : ''}`),
+    create: (body: { body: string; image?: string }) => post<Post>('/feed', body),
+    like: (id: string) => post<Post>(`/feed/${id}/like`),
+    remove: (id: string) => del(`/feed/${id}`),
   },
   notices: {
     list: (sectionKey?: string) => get<Notice[]>(`/notices${sectionKey ? `?section=${encodeURIComponent(sectionKey)}` : ''}`),
