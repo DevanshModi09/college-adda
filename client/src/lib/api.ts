@@ -9,13 +9,10 @@ import type {
   ClassSlot,
   Conversation,
   Deadline,
-  LostFoundBoard,
-  LostFoundPin,
   DirectMessage,
   FreeRooms,
   FriendStatus,
   FriendsOverview,
-  Notice,
   Post,
   Person,
   Priority,
@@ -112,8 +109,6 @@ export interface PeopleQuery {
 
 type UserRes = { user: PublicUser };
 
-export type PinBody = Pick<LostFoundPin, 'kind' | 'title' | 'details' | 'place'>;
-
 export const api = {
   auth: {
     me: () => get<UserRes>('/me').then((r) => r.user),
@@ -185,18 +180,6 @@ export const api = {
     create: (body: { body: string; image?: string }) => post<Post>('/feed', body),
     like: (id: string) => post<Post>(`/feed/${id}/like`),
     remove: (id: string) => del(`/feed/${id}`),
-  },
-  lostFound: {
-    list: () => get<LostFoundBoard>('/lostfound'),
-    create: (body: PinBody) => post<LostFoundPin>('/lostfound', body),
-    resolve: (id: string, resolved: boolean) => patch<LostFoundPin>(`/lostfound/${id}`, { resolved }),
-    remove: (id: string) => del(`/lostfound/${id}`),
-  },
-  notices: {
-    list: (sectionKey?: string) => get<Notice[]>(`/notices${sectionKey ? `?section=${encodeURIComponent(sectionKey)}` : ''}`),
-    create: (body: { body: string; section?: string; pinned?: boolean }) => post<Notice>('/notices', body),
-    pin: (id: string, pinned: boolean) => patch<Notice>(`/notices/${id}`, { pinned }),
-    remove: (id: string) => del(`/notices/${id}`),
   },
   events: {
     list: () => get<CampusEvent[]>('/events'),

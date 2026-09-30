@@ -157,29 +157,11 @@ export const eventCreateSchema = z
   })
   .refine((e) => e.endAt === null || e.endAt > e.startAt, { message: 'End must be after start', path: ['endAt'] });
 
-export const noticeCreateSchema = z.object({
-  body: required(500, 'Notice'),
-  /** Admins may post to any section; everyone else posts to their own. */
-  section: z.string().max(80).optional(),
-  pinned: z.boolean().default(false),
-});
-
-export const noticePinSchema = z.object({ pinned: z.boolean() });
-
 export const postCreateSchema = z.object({
   body: text(500).default(''),
   /** Optional photo as a data URL; the service checks the bytes. */
   image: z.string().max(2_200_000).optional(),
 });
-
-export const pinCreateSchema = z.object({
-  kind: z.enum(['lost', 'found']),
-  title: required(60, 'What it is'),
-  details: text(300).default(''),
-  place: text(60).default(''),
-});
-
-export const pinResolveSchema = z.object({ resolved: z.boolean() });
 
 export const feedQuerySchema = z.object({
   before: z.coerce.number().int().positive().optional(),
@@ -196,4 +178,3 @@ export type DeadlineUpdate = z.infer<typeof deadlineUpdateSchema>;
 export type ClassCreate = z.infer<typeof classCreateSchema>;
 export type RoomCreate = z.infer<typeof roomCreateSchema>;
 export type EventCreate = z.infer<typeof eventCreateSchema>;
-export type NoticeCreate = z.infer<typeof noticeCreateSchema>;

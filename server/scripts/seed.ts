@@ -8,7 +8,6 @@ import { eventsService } from '../src/services/events.service.ts';
 import { messagesService } from '../src/services/messages.service.ts';
 import { friendsService } from '../src/services/friends.service.ts';
 import { roomsService } from '../src/services/rooms.service.ts';
-import { noticesService } from '../src/services/notices.service.ts';
 import { feedService } from '../src/services/feed.service.ts';
 import { usersRepo } from '../src/repositories/users.repo.ts';
 import { eventsRepo } from '../src/repositories/events.repo.ts';
@@ -93,11 +92,6 @@ if (!(await messagesService.conversations(me)).length) {
   await messagesService.send(ids.aarav!, me, 'SIH team still open? I can do the ML part');
 }
 
-if (!(await noticesService.list(admin, 'CSE|2|B')).length) {
-  await noticesService.create(admin, { body: 'Mid-sem exams start 13 Oct. Admit cards from the exam cell on Friday, bring your ID.', section: 'CSE|2|B', pinned: true });
-  await noticesService.create(admin, { body: 'DBMS lab shifted to Lab 4 this week. Bring your lab file, sir is checking.', section: 'CSE|2|B', pinned: false });
-  await noticesService.create(admin, { body: 'Anyone found a black boAt charger in 2nd floor washroom corridor? DM me.', section: 'CSE|2|B', pinned: false });
-}
 
 if (!(await feedService.list(admin, { limit: 1 })).length) {
   const user = async (name: string) => (await usersRepo.findById(ids[name]!))!;

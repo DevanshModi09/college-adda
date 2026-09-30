@@ -288,8 +288,6 @@ export function attachRealtime(server: Server) {
   bus.on('events:changed', () => broadcast({ type: 'events:changed' }));
   bus.on('deadlines:changed', () => broadcast({ type: 'deadlines:changed' }));
   bus.on('feed:changed', () => broadcast({ type: 'feed:changed' }));
-  bus.on('lostfound:changed', () => broadcast({ type: 'lostfound:changed' }));
-  bus.on('notices:changed', ({ sectionKey }) => broadcast({ type: 'notices:changed', sectionKey }));
   bus.on('rooms:changed', () => void pushRooms().catch((err) => logger.error('rooms push failed', { err: String(err) })));
   bus.on('friends:changed', ({ to, kind, from }) => toUser(to, { type: 'friends:changed', kind, from }));
 

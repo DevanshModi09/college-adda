@@ -8,18 +8,15 @@ import { Toaster } from './Toaster';
 import { GameModal } from './GameModal';
 
 const LINKS = [
-  { to: '/', label: 'HOME', end: true },
   { to: '/feed', label: 'FEED' },
   { to: '/campus', label: 'CAMPUS' },
   { to: '/deadlines', label: 'DEADLINES' },
   { to: '/assignments', label: 'ASSIGNMENTS' },
   { to: '/timetable', label: 'TIMETABLE' },
-  { to: '/notices', label: 'NOTICES' },
   { to: '/attendance', label: 'ATTENDANCE' },
   { to: '/desks', label: 'CODE DESK' },
   { to: '/people', label: 'PEOPLE' },
   { to: '/events', label: 'EVENTS' },
-  { to: '/lostfound', label: 'LOST & FOUND' },
 ];
 
 export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => void }) {
@@ -40,7 +37,7 @@ export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => v
         </Link>
         <nav className="nav" aria-label="Main">
           {LINKS.map((l) => (
-            <NavLink key={l.to} to={l.to} end={l.end}>
+            <NavLink key={l.to} to={l.to}>
               {l.label}
               {l.to === '/people' && requests > 0 && (
                 <span className="nav__badge" aria-label={`${requests} friend requests`}>

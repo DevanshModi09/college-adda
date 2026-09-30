@@ -55,19 +55,6 @@ export interface Deadline {
   createdAt: number;
 }
 
-/** A post on a section's notice board. */
-export interface Notice {
-  id: string;
-  sectionKey: string;
-  body: string;
-  /** Pinned by an admin: shown first. */
-  pinned: boolean;
-  author: PublicUser | null;
-  /** Viewer may delete it (the author, or an admin). */
-  canDelete: boolean;
-  createdAt: number;
-}
-
 /** A thought on the campus feed. */
 export interface Post {
   id: string;
@@ -81,28 +68,6 @@ export interface Post {
   /** Viewer may delete it (the author, or an admin). */
   canDelete: boolean;
   createdAt: number;
-}
-
-/** Something lost or found on campus. Students report it to the admin, who posts it. */
-export interface LostFoundPin {
-  id: string;
-  kind: 'lost' | 'found';
-  title: string;
-  details: string;
-  /** Where it was lost or found, e.g. 'Library, 2nd floor'. */
-  place: string;
-  /** Back with its owner: kept on the board for a week. */
-  resolved: boolean;
-  author: PublicUser | null;
-  /** Viewer may add, resolve or delete items (admins). */
-  canEdit: boolean;
-  createdAt: number;
-}
-
-export interface LostFoundBoard {
-  pins: LostFoundPin[];
-  /** The admin to message to report or claim an item. */
-  contact: PublicUser | null;
 }
 
 /** A class section: branch + year + letter. `key` is 'CSE|3|B'. */
@@ -361,9 +326,7 @@ export type ServerMessage =
   | { type: 'dm'; message: DirectMessage; from: PublicUser }
   | { type: 'events:changed' }
   | { type: 'deadlines:changed' }
-  | { type: 'notices:changed'; sectionKey: string }
   | { type: 'feed:changed' }
-  | { type: 'lostfound:changed' }
   | { type: 'friends:changed'; kind: 'request' | 'accepted' | 'removed'; from: PublicUser }
   | { type: 'error'; error: string }
   | { type: 'world:state'; players: WorldPlayer[]; you: WorldPlayer; plates: Record<string, Plate[]> }

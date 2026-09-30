@@ -16,13 +16,11 @@ import { RoomPage } from './features/rooms/RoomPage';
 import { PeoplePage } from './features/people/PeoplePage';
 import { ChatPage } from './features/chat/ChatPage';
 import { EventsPage } from './features/events/EventsPage';
-import { LostFoundPage } from './features/lostfound/LostFoundPage';
 import { ProfilePage } from './features/profile/ProfilePage';
 import { CampusPage } from './features/campus/CampusPage';
 import { AttendancePage } from './features/attendance/AttendancePage';
 import { AttendanceSetupPage } from './features/attendance/AttendanceSetupPage';
 import { AssignmentsPage } from './features/assignments/AssignmentsPage';
-import { NoticesPage } from './features/notices/NoticesPage';
 import { FeedPage } from './features/feed/FeedPage';
 
 function LegacyRoomRedirect() {
@@ -60,7 +58,6 @@ export function App() {
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="attendance/setup" element={<AttendanceSetupPage me={user} />} />
         <Route path="timetable" element={<TimetablePage me={user} />} />
-        <Route path="notices" element={<NoticesPage me={user} />} />
         <Route path="desks" element={<RoomsPage />} />
         <Route path="desks/:roomId" element={<RoomPage me={user} />} />
         {/* old links */}
@@ -70,7 +67,6 @@ export function App() {
         <Route path="chat" element={<ChatPage me={user} />} />
         <Route path="chat/:userId" element={<ChatPage me={user} />} />
         <Route path="events" element={<EventsPage me={user} />} />
-        <Route path="lostfound" element={<LostFoundPage me={user} />} />
         <Route path="profile" element={<ProfilePage user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

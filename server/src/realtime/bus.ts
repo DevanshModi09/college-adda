@@ -6,9 +6,7 @@ interface BusEvents {
   'dm:created': [{ message: DirectMessage; from: PublicUser }];
   'events:changed': [];
   'deadlines:changed': [];
-  'notices:changed': [{ sectionKey: string }];
   'feed:changed': [];
-  'lostfound:changed': [];
   'rooms:changed': [];
   'friends:changed': [{ to: string; kind: 'request' | 'accepted' | 'removed'; from: PublicUser }];
 }

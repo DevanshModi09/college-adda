@@ -88,7 +88,7 @@ export const authService = {
     if (host) {
       await friendsRepo.request(host.id, user.id);
       await friendsRepo.accept(host.id, user.id);
-      await messagesService.send(host.id, user.id, `hey ${user.name.split(' ')[0]}! welcome to College Adda 👋 try the campus map, check the notice board, and mark today's attendance.`);
+      await messagesService.send(host.id, user.id, `hey ${user.name.split(' ')[0]}! welcome to College Adda 👋 try the campus map, grab a chai on Food Street, and mark today's attendance.`);
     }
     return startSession(user, GUEST.lifetimeMs);
   },

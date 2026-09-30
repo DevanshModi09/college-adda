@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { AssignmentStatus, AttendanceStatus, CampusEvent, ClassSlot, Deadline, LostFoundBoard, LostFoundPin, Post, SubjectAssignments } from '@adda/shared';
-import { api, type ClassBody, type DeadlineBody, type EventBody, type PeopleQuery, type PinBody, type RoomBody } from '../lib/api';
+import type { AssignmentStatus, AttendanceStatus, CampusEvent, ClassSlot, Deadline, Post, SubjectAssignments } from '@adda/shared';
+import { api, type ClassBody, type DeadlineBody, type EventBody, type PeopleQuery, type RoomBody } from '../lib/api';
 import { keys, queryClient } from '../lib/queryClient';
 import { toast } from '../stores/toasts';
 
@@ -215,33 +215,6 @@ export const useDeleteEvent = () =>
     onError,
   });
 
-// ---------- notice board ----------
-// Keyed by the section actually shown, so realtime pushes for that section refresh it.
-export const useNotices = (sectionKey: string) =>
-  useQuery({ queryKey: keys.notices(sectionKey), queryFn: () => api.notices.list(sectionKey), enabled: !!sectionKey });
-
-const refreshNotices = (sectionKey: string) => queryClient.invalidateQueries({ queryKey: keys.notices(sectionKey) });
-
-export const usePostNotice = () =>
-  useMutation({
-    mutationFn: (body: { body: string; section: string; pinned?: boolean }) => api.notices.create(body),
-    onSuccess: (n) => refreshNotices(n.sectionKey),
-  });
-
-export const usePinNotice = () =>
-  useMutation({
-    mutationFn: ({ id, pinned }: { id: string; pinned: boolean }) => api.notices.pin(id, pinned),
-    onSuccess: (n) => refreshNotices(n.sectionKey),
-    onError,
-  });
-
-export const useDeleteNotice = () =>
-  useMutation({
-    mutationFn: ({ id }: { id: string; sectionKey: string }) => api.notices.remove(id),
-    onSuccess: (_r, { sectionKey }) => refreshNotices(sectionKey),
-    onError,
-  });
-
 // ---------- feed ----------
 export const useFeed = () => useQuery({ queryKey: keys.feed, queryFn: () => api.feed.list() });
 
@@ -278,29 +251,3 @@ export const useDeletePost = () =>
     onError,
   });
 
-// ---------- lost & found ----------
-export const useLostFound = () => useQuery({ queryKey: keys.lostFound, queryFn: api.lostFound.list });
-
-const setPins = (fn: (list: LostFoundPin[]) => LostFoundPin[]) =>
-  queryClient.setQueryData<LostFoundBoard>(keys.lostFound, (prev) => prev && { ...prev, pins: fn(prev.pins) });
-
-export const useCreatePin = () =>
-  useMutation({
-    mutationFn: (body: PinBody) => api.lostFound.create(body),
-    onSuccess: (p) => setPins((list) => [p, ...list.filter((x) => x.id !== p.id)]),
-    onError,
-  });
-
-export const useResolvePin = () =>
-  useMutation({
-    mutationFn: ({ id, resolved }: { id: string; resolved: boolean }) => api.lostFound.resolve(id, resolved),
-    onSuccess: (p) => setPins((list) => list.map((x) => (x.id === p.id ? p : x))),
-    onError,
-  });
-
-export const useDeletePin = () =>
-  useMutation({
-    mutationFn: (id: string) => api.lostFound.remove(id),
-    onSuccess: (_r, id) => setPins((list) => list.filter((p) => p.id !== id)),
-    onError,
-  });

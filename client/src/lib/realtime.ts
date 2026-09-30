@@ -132,14 +132,8 @@ class RealtimeClient {
       case 'error':
         toast(msg.error.toUpperCase(), { kind: 'bad' });
         break;
-      case 'lostfound:changed':
-        queryClient.invalidateQueries({ queryKey: keys.lostFound });
-        break;
       case 'feed:changed':
         queryClient.invalidateQueries({ queryKey: keys.feed });
-        break;
-      case 'notices:changed':
-        queryClient.invalidateQueries({ queryKey: keys.notices(msg.sectionKey) });
         break;
       case 'dm':
         this.handleDm(msg.message, msg.from.name);

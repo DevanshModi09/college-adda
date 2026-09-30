@@ -178,39 +178,6 @@ describe('planner', () => {
   });
 });
 
-describe('notice board', () => {
-  it('lets members post to their own section, admins pin anywhere, authors or admins delete', async () => {
-    const reg = async (username: string, section: string) => {
-      const r = await call('', '/auth/register', 'POST', { username, password: 'password123', name: username, branch: 'ME', year: 1, section });
-      return { cookie: r.cookie, id: r.json.user.id as string };
-    };
-    const a = await reg('nb_a', 'A');
-    const a2 = await reg('nb_a2', 'A');
-    const b = await reg('nb_b', 'B');
-    const admin = await reg('nb_admin', 'C');
-    await usersRepo.promoteAdmins(['nb_admin']);
-
-    const post = await call(a.cookie, '/notices', 'POST', { body: 'Lab moved to room 4' });
-    assert.equal(post.status, 201);
-    assert.equal(post.json.sectionKey, 'ME|1|A');
-    assert.equal((await call(a.cookie, '/notices', 'POST', { body: 'x', section: 'ME|1|B' })).status, 403);
-    assert.equal((await call(a.cookie, '/notices', 'POST', { body: 'x', pinned: true })).status, 403);
-
-    // Anyone can read another section's board; only the author (or an admin) can delete.
-    const seen = await call(b.cookie, '/notices?section=ME%7C1%7CA');
-    assert.equal(seen.json.length, 1);
-    assert.equal(seen.json[0].canDelete, false);
-    assert.equal((await call(a2.cookie, `/notices/${post.json.id}`, 'DELETE')).status, 403);
-
-    const pinned = await call(admin.cookie, '/notices', 'POST', { body: 'Mid-sem schedule is out', section: 'ME|1|A', pinned: true });
-    assert.equal(pinned.status, 201);
-    const board = (await call(a2.cookie, '/notices')).json;
-    assert.deepEqual(board.map((n: { body: string }) => n.body), ['Mid-sem schedule is out', 'Lab moved to room 4']);
-    assert.equal((await call(a.cookie, `/notices/${pinned.json.id}`, 'PATCH', { pinned: false })).status, 403);
-    assert.equal((await call(admin.cookie, `/notices/${post.json.id}`, 'DELETE')).status, 204);
-  });
-});
-
 describe('feed', () => {
   const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
@@ -264,34 +231,6 @@ describe('café plates', () => {
     world.leave('plate-bo', 'c2');
     assert.deepEqual(world.clearTable('plate-bo', true), { tableId: 't-plates', plates: [] }, 'leaving campus clears it too');
     world.leave('plate-ana', 'c1');
-  });
-});
-
-describe('lost & found', () => {
-  it('only lets admins post and resolve items; students see the board and who to message', async () => {
-    const admin = await register('lf_admin', 'Ira');
-    await usersRepo.promoteAdmins(['lf_admin']);
-    const student = await register('lf_jay', 'Jay');
-
-    const item = { kind: 'found', title: 'Blue water bottle', details: 'Milton, has stickers', place: 'Library, 2nd floor' };
-    assert.equal((await call(student.cookie, '/lostfound', 'POST', item)).status, 403, 'students message the admin instead');
-
-    const pin = await call(admin.cookie, '/lostfound', 'POST', item);
-    assert.equal(pin.status, 201);
-    assert.deepEqual([pin.json.kind, pin.json.place, pin.json.resolved, pin.json.canEdit], ['found', 'Library, 2nd floor', false, true]);
-    assert.equal((await call(admin.cookie, '/lostfound', 'POST', { ...item, kind: 'stolen' })).status, 400);
-
-    const board = (await call(student.cookie, '/lostfound')).json;
-    assert.ok('contact' in board);
-    const seen = board.pins.find((p: { id: string }) => p.id === pin.json.id);
-    assert.equal(seen.canEdit, false);
-    assert.equal((await call(student.cookie, `/lostfound/${pin.json.id}`, 'PATCH', { resolved: true })).status, 403);
-    assert.equal((await call(student.cookie, `/lostfound/${pin.json.id}`, 'DELETE')).status, 403);
-
-    assert.equal((await call(admin.cookie, `/lostfound/${pin.json.id}`, 'PATCH', { resolved: true })).json.resolved, true);
-    const after = (await call(student.cookie, '/lostfound')).json.pins;
-    assert.ok(after.some((p: { id: string; resolved: boolean }) => p.id === pin.json.id && p.resolved), 'recently resolved items stay listed');
-    assert.equal((await call(admin.cookie, `/lostfound/${pin.json.id}`, 'DELETE')).status, 204);
   });
 });
 

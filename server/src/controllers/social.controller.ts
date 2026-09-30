@@ -5,9 +5,7 @@ import { friendsService } from '../services/friends.service.ts';
 import { messagesService } from '../services/messages.service.ts';
 import { roomsService } from '../services/rooms.service.ts';
 import { eventsService } from '../services/events.service.ts';
-import { noticesService } from '../services/notices.service.ts';
 import { feedService } from '../services/feed.service.ts';
-import { lostFoundService } from '../services/lostfound.service.ts';
 import {
   dmQuerySchema,
   dmSendSchema,
@@ -15,10 +13,6 @@ import {
   feedQuerySchema,
   postCreateSchema,
   idParam,
-  noticeCreateSchema,
-  noticePinSchema,
-  pinCreateSchema,
-  pinResolveSchema,
   peopleQuerySchema,
   roomCreateSchema,
   timetableQuerySchema,
@@ -98,21 +92,6 @@ export const eventsController = {
   },
 };
 
-export const noticesController = {
-  async list(req: Request, res: Response) {
-    res.json(await noticesService.list(currentUser(req), timetableQuerySchema.parse(req.query).section));
-  },
-  async create(req: Request, res: Response) {
-    res.status(201).json(await noticesService.create(currentUser(req), noticeCreateSchema.parse(req.body)));
-  },
-  async pin(req: Request, res: Response) {
-    res.json(await noticesService.setPinned(currentUser(req), idParam.parse(req.params).id, noticePinSchema.parse(req.body).pinned));
-  },
-  async remove(req: Request, res: Response) {
-    await noticesService.remove(currentUser(req), idParam.parse(req.params).id);
-    res.status(204).end();
-  },
-};
 
 export const feedController = {
   async list(req: Request, res: Response) {
@@ -131,22 +110,6 @@ export const feedController = {
   },
   async remove(req: Request, res: Response) {
     await feedService.remove(currentUser(req), idParam.parse(req.params).id);
-    res.status(204).end();
-  },
-};
-
-export const lostFoundController = {
-  async list(req: Request, res: Response) {
-    res.json(await lostFoundService.board(currentUser(req)));
-  },
-  async create(req: Request, res: Response) {
-    res.status(201).json(await lostFoundService.create(currentUser(req), pinCreateSchema.parse(req.body)));
-  },
-  async resolve(req: Request, res: Response) {
-    res.json(await lostFoundService.setResolved(currentUser(req), idParam.parse(req.params).id, pinResolveSchema.parse(req.body).resolved));
-  },
-  async remove(req: Request, res: Response) {
-    await lostFoundService.remove(currentUser(req), idParam.parse(req.params).id);
     res.status(204).end();
   },
 };
