@@ -25,7 +25,7 @@ const players = [
   { username: 'devanshmodi', name: 'Devansh Modi', branch: 'CSE', year: 2, section: 'B', bio: 'Building College Adda. Looking for a SIH team.', interests: ['DSA', 'React', 'Node'] },
   { username: 'aarav', name: 'Aarav Sharma', branch: 'CSE', year: 2, section: 'SA', bio: 'ML nerd, chai enthusiast.', interests: ['ML', 'Python', 'Kaggle'] },
   { username: 'priya', name: 'Priya Jain', branch: 'CSE', year: 2, section: 'C', bio: 'Frontend + design. Ask me about Figma.', interests: ['React', 'UI/UX', 'Figma'] },
-  { username: 'kabir', name: 'Kabir Singh', branch: 'ECE', year: 4, section: 'A', bio: 'Robotics club lead.', interests: ['Robotics', 'Arduino', 'C++'] },
+  { username: 'kabir', name: 'Kabir Singh', branch: 'CSE', year: 2, section: 'E', bio: 'Robotics club lead.', interests: ['Robotics', 'Arduino', 'C++'] },
   { username: 'ananya', name: 'Ananya Gupta', branch: 'CSE', year: 2, section: 'DA', bio: 'Competitive programming, 4★ on CodeChef.', interests: ['DSA', 'C++', 'CP'] },
 ];
 

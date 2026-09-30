@@ -115,10 +115,10 @@ export function TimetablePage({ me }: { me: PublicUser }) {
   );
 }
 
-/** One dropdown for every section, grouped by branch + year, with the viewer's own first. */
+/** One dropdown for every section with a timetable (plus the viewer's own), grouped by branch + year. */
 export function SectionSelect({ sections, value, mine, onChange }: { sections: Section[]; value: string; mine: string; onChange: (key: string) => void }) {
   const groups = new Map<string, Section[]>();
-  for (const s of sections) {
+  for (const s of sections.filter((s) => s.slots > 0 || s.key === mine)) {
     const g = `${s.branch} · YEAR ${s.year}`;
     groups.set(g, [...(groups.get(g) ?? []), s]);
   }
