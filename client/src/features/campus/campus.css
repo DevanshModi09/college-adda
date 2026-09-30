@@ -245,7 +245,7 @@
 .campus__mini {
   display: block;
   width: 100%;
-  aspect-ratio: 126 / 54; /* WORLD_SIZE */
+  aspect-ratio: 84 / 36; /* WORLD_SIZE */
   margin-bottom: 10px;
   border: 2px solid var(--frame);
   background: var(--bg-deep);

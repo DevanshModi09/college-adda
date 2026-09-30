@@ -254,7 +254,7 @@ export interface Plate {
 export const PLATE_TTL_MS = 3 * 60e3;
 
 /** World size in tiles, shared so server and client agree on bounds. */
-export const WORLD_SIZE = { w: 126, h: 54 } as const;
+export const WORLD_SIZE = { w: 84, h: 36 } as const;
 
 // ---------- mini games (Game Zone) ----------
 

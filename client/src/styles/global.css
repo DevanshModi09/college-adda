@@ -771,8 +771,8 @@ a.line:hover {
 }
 
 /* ============ responsive ============ */
-/* Laptops: the 10-item nav gets its own row instead of scrolling out of view. */
-@media (max-width: 1680px) {
+/* Narrow screens: the nav gets its own row under the logo instead of scrolling out of view. */
+@media (max-width: 1400px) {
   .topbar {
     flex-wrap: wrap;
     row-gap: 10px;
