@@ -59,7 +59,7 @@ export const feedService = {
     const image = input.image ? decodeImage(input.image) : null; // validated before anything leaves the server
     const id = newId();
 
-    // With Cloudinary configured the photo goes there and we keep only its URL; otherwise into SQLite.
+    // With Cloudinary configured the photo goes there and we keep only its URL; otherwise into Postgres.
     let hosted: { url: string; publicId: string } | null = null;
     if (image && cloudinary.enabled()) {
       try {

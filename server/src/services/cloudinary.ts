@@ -4,7 +4,7 @@ import { logger } from '../utils/logger.ts';
 // Photo hosting on Cloudinary, used when CLOUDINARY_URL is set
 // (cloudinary://<api_key>:<api_secret>@<cloud_name>, from the Cloudinary dashboard).
 // Uploads are signed here on the server, so the secret never reaches the browser.
-// Without it, photos stay in SQLite (local dev, tests).
+// Without it, photos are stored in Postgres (tests, or when it is unset).
 
 const FOLDER = 'college-adda/feed';
 
