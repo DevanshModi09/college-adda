@@ -9,8 +9,8 @@ import { usersService } from './users.service.ts';
 
 const canDelete = (viewer: UserRecord, n: NoticeRecord) => n.authorId === viewer.id || viewer.role === 'admin';
 
-function present(viewer: UserRecord, records: NoticeRecord[]): Notice[] {
-  const authors = usersService.publicByIds(records.map((n) => n.authorId));
+async function present(viewer: UserRecord, records: NoticeRecord[]): Promise<Notice[]> {
+  const authors = await usersService.publicByIds(records.map((n) => n.authorId));
   return records.map(({ authorId, ...n }) => ({
     ...n,
     author: authors.get(authorId) ?? null,
@@ -26,35 +26,35 @@ function sectionFor(viewer: UserRecord, key?: string): string {
 
 export const noticesService = {
   /** Like timetables, any section's board is readable. Defaults to the viewer's own. */
-  list: (viewer: UserRecord, sectionKey?: string) => present(viewer, noticesRepo.listBySection(sectionFor(viewer, sectionKey))),
+  list: async (viewer: UserRecord, sectionKey?: string) => present(viewer, await noticesRepo.listBySection(sectionFor(viewer, sectionKey))),
 
   /** Students post to their own section; admins can post (and pin) anywhere. */
-  create(viewer: UserRecord, input: NoticeCreate): Notice {
+  async create(viewer: UserRecord, input: NoticeCreate): Promise<Notice> {
     const sectionKey = sectionFor(viewer, input.section);
     const isAdmin = viewer.role === 'admin';
     if (!isAdmin && sectionKey !== sectionKeyOf(viewer)) throw forbidden('You can only post on your own section’s board');
     if (input.pinned && !isAdmin) throw forbidden('Only admins can pin notices');
 
     const record: NoticeRecord = { id: newId(), sectionKey, authorId: viewer.id, body: input.body, pinned: input.pinned, createdAt: Date.now() };
-    noticesRepo.insert(record);
+    await noticesRepo.insert(record);
     bus.emit('notices:changed', { sectionKey });
-    return present(viewer, [record])[0]!;
+    return (await present(viewer, [record]))[0]!;
   },
 
-  setPinned(viewer: UserRecord, id: string, pinned: boolean): Notice {
+  async setPinned(viewer: UserRecord, id: string, pinned: boolean): Promise<Notice> {
     if (viewer.role !== 'admin') throw forbidden('Only admins can pin notices');
-    const record = noticesRepo.find(id);
+    const record = await noticesRepo.find(id);
     if (!record) throw notFound('Notice');
-    noticesRepo.setPinned(id, pinned);
+    await noticesRepo.setPinned(id, pinned);
     bus.emit('notices:changed', { sectionKey: record.sectionKey });
-    return present(viewer, [{ ...record, pinned }])[0]!;
+    return (await present(viewer, [{ ...record, pinned }]))[0]!;
   },
 
-  remove(viewer: UserRecord, id: string): void {
-    const record = noticesRepo.find(id);
+  async remove(viewer: UserRecord, id: string): Promise<void> {
+    const record = await noticesRepo.find(id);
     if (!record) throw notFound('Notice');
     if (!canDelete(viewer, record)) throw forbidden('Only the author or an admin can remove this notice');
-    noticesRepo.delete(id);
+    await noticesRepo.delete(id);
     bus.emit('notices:changed', { sectionKey: record.sectionKey });
   },
 };

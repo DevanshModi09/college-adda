@@ -1,5 +1,7 @@
 import type { Role } from '@adda/shared';
 import { db } from '../db/database.ts';
+import { ms } from '../db/convert.ts';
+import { Prisma, type User } from '../generated/prisma/client.ts';
 
 export interface UserRecord {
   id: string;
@@ -17,111 +19,90 @@ export interface UserRecord {
   createdAt: number;
 }
 
-interface UserRow {
-  id: string;
-  username: string;
-  name: string;
-  branch: string;
-  year: number;
-  section: string;
-  role: Role;
-  bio: string;
-  interests: string;
-  color: string;
-  password_hash: string;
-  is_guest: number;
-  created_at: number;
-}
-
-const toRecord = (r: UserRow): UserRecord => ({
-  id: r.id,
-  username: r.username,
-  name: r.name,
-  branch: r.branch,
-  year: r.year,
-  section: r.section,
-  role: r.role,
-  bio: r.bio,
-  interests: JSON.parse(r.interests) as string[],
-  color: r.color,
-  passwordHash: r.password_hash,
-  guest: r.is_guest === 1,
-  createdAt: r.created_at,
+const toRecord = (u: User): UserRecord => ({
+  id: u.id,
+  username: u.username,
+  name: u.name,
+  branch: u.branch,
+  year: u.year,
+  section: u.section,
+  role: u.role as Role,
+  bio: u.bio,
+  interests: u.interests,
+  color: u.color,
+  passwordHash: u.passwordHash,
+  guest: u.isGuest,
+  createdAt: ms(u.createdAt),
 });
 
 export const usersRepo = {
-  findById(id: string): UserRecord | null {
-    const row = db().prepare('SELECT * FROM users WHERE id = ?').get(id) as UserRow | undefined;
-    return row ? toRecord(row) : null;
+  async findById(id: string): Promise<UserRecord | null> {
+    const u = await db().user.findUnique({ where: { id } });
+    return u ? toRecord(u) : null;
   },
 
-  findByUsername(username: string): UserRecord | null {
-    const row = db().prepare('SELECT * FROM users WHERE username = ?').get(username) as UserRow | undefined;
-    return row ? toRecord(row) : null;
+  async findByUsername(username: string): Promise<UserRecord | null> {
+    const u = await db().user.findUnique({ where: { username } });
+    return u ? toRecord(u) : null;
   },
 
-  findManyByIds(ids: string[]): UserRecord[] {
+  async findManyByIds(ids: string[]): Promise<UserRecord[]> {
     if (!ids.length) return [];
-    const rows = db()
-      .prepare(`SELECT * FROM users WHERE id IN (${ids.map(() => '?').join(',')})`)
-      .all(...ids) as unknown as UserRow[];
-    return rows.map(toRecord);
+    return (await db().user.findMany({ where: { id: { in: ids } } })).map(toRecord);
   },
 
-  search(opts: { q?: string; branch?: string; year?: number; section?: string; excludeId: string; limit: number }): UserRecord[] {
-    const where = ['id != ?', 'is_guest = 0'];
-    const params: (string | number)[] = [opts.excludeId];
+  /** Name / username / bio / interest substring search, case-insensitive, sorted by name. */
+  async search(opts: { q?: string; branch?: string; year?: number; section?: string; excludeId: string; limit: number }): Promise<UserRecord[]> {
+    const where = [Prisma.sql`id <> ${opts.excludeId}`, Prisma.sql`NOT is_guest`];
     if (opts.q) {
-      where.push("(name LIKE ? ESCAPE '\\' OR username LIKE ? ESCAPE '\\' OR bio LIKE ? ESCAPE '\\' OR interests LIKE ? ESCAPE '\\')");
       const like = `%${opts.q.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
-      params.push(like, like, like, like);
+      where.push(
+        Prisma.sql`(name ILIKE ${like} OR username ILIKE ${like} OR bio ILIKE ${like} OR array_to_string(interests, ' ') ILIKE ${like})`
+      );
     }
-    if (opts.branch) {
-      where.push('branch = ?');
-      params.push(opts.branch);
-    }
-    if (opts.year) {
-      where.push('year = ?');
-      params.push(opts.year);
-    }
-    if (opts.section) {
-      where.push('section = ?');
-      params.push(opts.section);
-    }
-    params.push(opts.limit);
-    const rows = db()
-      .prepare(`SELECT * FROM users WHERE ${where.join(' AND ')} ORDER BY name COLLATE NOCASE LIMIT ?`)
-      .all(...params) as unknown as UserRow[];
-    return rows.map(toRecord);
+    if (opts.branch) where.push(Prisma.sql`branch = ${opts.branch}`);
+    if (opts.year) where.push(Prisma.sql`year = ${opts.year}`);
+    if (opts.section) where.push(Prisma.sql`section = ${opts.section}`);
+    const ids = await db().$queryRaw<{ id: string }[]>`
+      SELECT id FROM users WHERE ${Prisma.join(where, ' AND ')} ORDER BY lower(name) LIMIT ${opts.limit}`;
+    const byId = new Map((await this.findManyByIds(ids.map((r) => r.id))).map((u) => [u.id, u]));
+    return ids.flatMap((r) => byId.get(r.id) ?? []);
   },
 
-  insert(u: UserRecord): void {
-    db()
-      .prepare(
-        `INSERT INTO users (id, username, name, branch, year, section, bio, interests, color, password_hash, is_guest, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(u.id, u.username, u.name, u.branch, u.year, u.section, u.bio, JSON.stringify(u.interests), u.color, u.passwordHash, u.guest ? 1 : 0, u.createdAt);
+  async insert(u: UserRecord): Promise<void> {
+    await db().user.create({
+      data: {
+        id: u.id,
+        username: u.username,
+        name: u.name,
+        branch: u.branch,
+        year: u.year,
+        section: u.section,
+        bio: u.bio,
+        interests: u.interests,
+        color: u.color,
+        passwordHash: u.passwordHash,
+        isGuest: u.guest,
+        createdAt: u.createdAt,
+      },
+    });
   },
 
   /** Deletes guest accounts created before the cutoff (their data cascades); returns how many. */
-  deleteGuestsBefore(cutoff: number): number {
-    return Number(db().prepare('DELETE FROM users WHERE is_guest = 1 AND created_at < ?').run(cutoff).changes);
+  async deleteGuestsBefore(cutoff: number): Promise<number> {
+    return (await db().user.deleteMany({ where: { isGuest: true, createdAt: { lt: cutoff } } })).count;
   },
 
   /** Promotes the given usernames to admin; returns how many rows changed. */
-  promoteAdmins(usernames: string[]): number {
+  async promoteAdmins(usernames: string[]): Promise<number> {
     if (!usernames.length) return 0;
-    return Number(
-      db()
-        .prepare(`UPDATE users SET role = 'admin' WHERE role != 'admin' AND username IN (${usernames.map(() => '?').join(',')})`)
-        .run(...usernames).changes
-    );
+    return (await db().user.updateMany({ where: { username: { in: usernames }, role: { not: 'admin' } }, data: { role: 'admin' } })).count;
   },
 
-  updateProfile(id: string, p: Pick<UserRecord, 'name' | 'branch' | 'year' | 'section' | 'bio' | 'interests'>): void {
-    db()
-      .prepare('UPDATE users SET name = ?, branch = ?, year = ?, section = ?, bio = ?, interests = ? WHERE id = ?')
-      .run(p.name, p.branch, p.year, p.section, p.bio, JSON.stringify(p.interests), id);
+  async updateProfile(id: string, p: Pick<UserRecord, 'name' | 'branch' | 'year' | 'section' | 'bio' | 'interests'>): Promise<void> {
+    await db().user.update({
+      where: { id },
+      data: { name: p.name, branch: p.branch, year: p.year, section: p.section, bio: p.bio, interests: p.interests },
+    });
   },
 };

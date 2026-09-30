@@ -1,65 +1,68 @@
 import type { DirectMessage } from '@adda/shared';
 import { db } from '../db/database.ts';
-
-interface Row {
-  id: string;
-  sender_id: string;
-  recipient_id: string;
-  text: string;
-  created_at: number;
-  read_at: number | null;
-}
+import { ms, msOrNull } from '../db/convert.ts';
+import type { DirectMessage as Row } from '../generated/prisma/client.ts';
 
 const toModel = (r: Row): DirectMessage => ({
   id: r.id,
-  senderId: r.sender_id,
-  recipientId: r.recipient_id,
+  senderId: r.senderId,
+  recipientId: r.recipientId,
   text: r.text,
-  createdAt: r.created_at,
-  readAt: r.read_at,
+  createdAt: ms(r.createdAt),
+  readAt: msOrNull(r.readAt),
 });
 
 export const messagesRepo = {
-  insert(m: DirectMessage): void {
-    db()
-      .prepare('INSERT INTO direct_messages (id, sender_id, recipient_id, text, created_at, read_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(m.id, m.senderId, m.recipientId, m.text, m.createdAt, m.readAt);
+  async insert(m: DirectMessage): Promise<void> {
+    await db().directMessage.create({ data: { ...m } });
   },
 
-  thread(a: string, b: string, before: number, limit: number): DirectMessage[] {
-    const rows = db()
-      .prepare(
-        `SELECT * FROM direct_messages
-         WHERE ((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)) AND created_at < ?
-         ORDER BY created_at DESC LIMIT ?`
-      )
-      .all(a, b, b, a, before, limit) as unknown as Row[];
+  async thread(a: string, b: string, before: number, limit: number): Promise<DirectMessage[]> {
+    const rows = await db().directMessage.findMany({
+      where: {
+        createdAt: { lt: before },
+        OR: [
+          { senderId: a, recipientId: b },
+          { senderId: b, recipientId: a },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
     return rows.reverse().map(toModel);
   },
 
   // Latest message per conversation partner, plus unread count from that partner.
-  conversations(userId: string): { partnerId: string; last: DirectMessage; unread: number }[] {
-    const rows = db()
-      .prepare(
-        `WITH mine AS (
-           SELECT *, CASE WHEN sender_id = :me THEN recipient_id ELSE sender_id END AS partner
-           FROM direct_messages WHERE sender_id = :me OR recipient_id = :me
-         ), ranked AS (
-           SELECT *, ROW_NUMBER() OVER (PARTITION BY partner ORDER BY created_at DESC) AS rn FROM mine
-         )
-         SELECT r.*, (
-           SELECT COUNT(*) FROM direct_messages d
-           WHERE d.sender_id = r.partner AND d.recipient_id = :me AND d.read_at IS NULL
-         ) AS unread
-         FROM ranked r WHERE rn = 1 ORDER BY created_at DESC`
+  async conversations(userId: string): Promise<{ partnerId: string; last: DirectMessage; unread: number }[]> {
+    const rows = await db().$queryRaw<
+      { id: string; sender_id: string; recipient_id: string; text: string; created_at: bigint; read_at: bigint | null; partner: string; unread: bigint }[]
+    >`
+      WITH mine AS (
+        SELECT *, CASE WHEN sender_id = ${userId} THEN recipient_id ELSE sender_id END AS partner
+        FROM direct_messages WHERE sender_id = ${userId} OR recipient_id = ${userId}
+      ), ranked AS (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY partner ORDER BY created_at DESC) AS rn FROM mine
       )
-      .all({ me: userId }) as unknown as (Row & { partner: string; unread: number })[];
-    return rows.map((r) => ({ partnerId: r.partner, last: toModel(r), unread: r.unread }));
+      SELECT r.id, r.sender_id, r.recipient_id, r.text, r.created_at, r.read_at, r.partner, (
+        SELECT COUNT(*) FROM direct_messages d
+        WHERE d.sender_id = r.partner AND d.recipient_id = ${userId} AND d.read_at IS NULL
+      ) AS unread
+      FROM ranked r WHERE rn = 1 ORDER BY r.created_at DESC`;
+    return rows.map((r) => ({
+      partnerId: r.partner,
+      unread: Number(r.unread),
+      last: {
+        id: r.id,
+        senderId: r.sender_id,
+        recipientId: r.recipient_id,
+        text: r.text,
+        createdAt: ms(r.created_at),
+        readAt: msOrNull(r.read_at),
+      },
+    }));
   },
 
-  markRead(recipientId: string, senderId: string): void {
-    db()
-      .prepare('UPDATE direct_messages SET read_at = ? WHERE recipient_id = ? AND sender_id = ? AND read_at IS NULL')
-      .run(Date.now(), recipientId, senderId);
+  async markRead(recipientId: string, senderId: string): Promise<void> {
+    await db().directMessage.updateMany({ where: { recipientId, senderId, readAt: null }, data: { readAt: Date.now() } });
   },
 };

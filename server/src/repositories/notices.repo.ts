@@ -1,4 +1,6 @@
 import { db } from '../db/database.ts';
+import { ms } from '../db/convert.ts';
+import type { Notice } from '../generated/prisma/client.ts';
 
 export interface NoticeRecord {
   id: string;
@@ -9,48 +11,35 @@ export interface NoticeRecord {
   createdAt: number;
 }
 
-interface Row {
-  id: string;
-  section_key: string;
-  author_id: string;
-  body: string;
-  pinned: number;
-  created_at: number;
-}
-
-const toRecord = (r: Row): NoticeRecord => ({
-  id: r.id,
-  sectionKey: r.section_key,
-  authorId: r.author_id,
-  body: r.body,
-  pinned: r.pinned === 1,
-  createdAt: r.created_at,
+const toRecord = (n: Notice): NoticeRecord => ({
+  id: n.id,
+  sectionKey: n.sectionKey,
+  authorId: n.authorId,
+  body: n.body,
+  pinned: n.pinned,
+  createdAt: ms(n.createdAt),
 });
 
 export const noticesRepo = {
-  listBySection(sectionKey: string, limit = 100): NoticeRecord[] {
-    const rows = db()
-      .prepare('SELECT * FROM notices WHERE section_key = ? ORDER BY pinned DESC, created_at DESC LIMIT ?')
-      .all(sectionKey, limit) as unknown as Row[];
+  async listBySection(sectionKey: string, limit = 100): Promise<NoticeRecord[]> {
+    const rows = await db().notice.findMany({ where: { sectionKey }, orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }], take: limit });
     return rows.map(toRecord);
   },
 
-  find(id: string): NoticeRecord | null {
-    const row = db().prepare('SELECT * FROM notices WHERE id = ?').get(id) as Row | undefined;
-    return row ? toRecord(row) : null;
+  async find(id: string): Promise<NoticeRecord | null> {
+    const n = await db().notice.findUnique({ where: { id } });
+    return n ? toRecord(n) : null;
   },
 
-  insert(n: NoticeRecord): void {
-    db()
-      .prepare('INSERT INTO notices (id, section_key, author_id, body, pinned, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(n.id, n.sectionKey, n.authorId, n.body, n.pinned ? 1 : 0, n.createdAt);
+  async insert(n: NoticeRecord): Promise<void> {
+    await db().notice.create({ data: { ...n } });
   },
 
-  setPinned(id: string, pinned: boolean): void {
-    db().prepare('UPDATE notices SET pinned = ? WHERE id = ?').run(pinned ? 1 : 0, id);
+  async setPinned(id: string, pinned: boolean): Promise<void> {
+    await db().notice.update({ where: { id }, data: { pinned } });
   },
 
-  delete(id: string): void {
-    db().prepare('DELETE FROM notices WHERE id = ?').run(id);
+  async delete(id: string): Promise<void> {
+    await db().notice.deleteMany({ where: { id } });
   },
 };

@@ -22,112 +22,112 @@ import {
 } from '../validators/schemas.ts';
 
 export const peopleController = {
-  search(req: Request, res: Response) {
+  async search(req: Request, res: Response) {
     const me = currentUser(req).id;
-    res.json(friendsService.withStatus(me, usersService.search(me, peopleQuerySchema.parse(req.query))));
+    res.json(await friendsService.withStatus(me, await usersService.search(me, peopleQuerySchema.parse(req.query))));
   },
-  get(req: Request, res: Response) {
+  async get(req: Request, res: Response) {
     const me = currentUser(req).id;
-    res.json(friendsService.withStatus(me, [usersService.get(idParam.parse(req.params).id)])[0]);
+    res.json((await friendsService.withStatus(me, [await usersService.get(idParam.parse(req.params).id)]))[0]);
   },
 };
 
 export const friendsController = {
-  overview(req: Request, res: Response) {
-    res.json(friendsService.overview(currentUser(req).id));
+  async overview(req: Request, res: Response) {
+    res.json(await friendsService.overview(currentUser(req).id));
   },
-  request(req: Request, res: Response) {
-    res.json({ friend: friendsService.request(currentUser(req).id, idParam.parse(req.params).id) });
+  async request(req: Request, res: Response) {
+    res.json({ friend: await friendsService.request(currentUser(req).id, idParam.parse(req.params).id) });
   },
-  accept(req: Request, res: Response) {
-    res.json({ friend: friendsService.accept(currentUser(req).id, idParam.parse(req.params).id) });
+  async accept(req: Request, res: Response) {
+    res.json({ friend: await friendsService.accept(currentUser(req).id, idParam.parse(req.params).id) });
   },
-  remove(req: Request, res: Response) {
-    friendsService.remove(currentUser(req).id, idParam.parse(req.params).id);
+  async remove(req: Request, res: Response) {
+    await friendsService.remove(currentUser(req).id, idParam.parse(req.params).id);
     res.status(204).end();
   },
 };
 
 export const messagesController = {
-  conversations(req: Request, res: Response) {
-    res.json(messagesService.conversations(currentUser(req).id));
+  async conversations(req: Request, res: Response) {
+    res.json(await messagesService.conversations(currentUser(req).id));
   },
-  thread(req: Request, res: Response) {
+  async thread(req: Request, res: Response) {
     const { id } = idParam.parse(req.params);
-    res.json(messagesService.thread(currentUser(req).id, id, dmQuerySchema.parse(req.query)));
+    res.json(await messagesService.thread(currentUser(req).id, id, dmQuerySchema.parse(req.query)));
   },
-  send(req: Request, res: Response) {
+  async send(req: Request, res: Response) {
     const { id } = idParam.parse(req.params);
-    res.status(201).json(messagesService.send(currentUser(req).id, id, dmSendSchema.parse(req.body).text));
+    res.status(201).json(await messagesService.send(currentUser(req).id, id, dmSendSchema.parse(req.body).text));
   },
-  markRead(req: Request, res: Response) {
-    messagesService.markRead(currentUser(req).id, idParam.parse(req.params).id);
+  async markRead(req: Request, res: Response) {
+    await messagesService.markRead(currentUser(req).id, idParam.parse(req.params).id);
     res.status(204).end();
   },
 };
 
 export const roomsController = {
-  list(_req: Request, res: Response) {
-    res.json(roomsService.listWithMembers());
+  async list(_req: Request, res: Response) {
+    res.json(await roomsService.listWithMembers());
   },
-  create(req: Request, res: Response) {
-    res.status(201).json(roomsService.create(currentUser(req).id, roomCreateSchema.parse(req.body)));
+  async create(req: Request, res: Response) {
+    res.status(201).json(await roomsService.create(currentUser(req).id, roomCreateSchema.parse(req.body)));
   },
-  remove(req: Request, res: Response) {
-    roomsService.remove(currentUser(req).id, idParam.parse(req.params).id);
+  async remove(req: Request, res: Response) {
+    await roomsService.remove(currentUser(req).id, idParam.parse(req.params).id);
     res.status(204).end();
   },
 };
 
 export const eventsController = {
-  list(req: Request, res: Response) {
-    res.json(eventsService.listUpcoming(currentUser(req).id));
+  async list(req: Request, res: Response) {
+    res.json(await eventsService.listUpcoming(currentUser(req).id));
   },
-  create(req: Request, res: Response) {
-    res.status(201).json(eventsService.create(currentUser(req), eventCreateSchema.parse(req.body)));
+  async create(req: Request, res: Response) {
+    res.status(201).json(await eventsService.create(currentUser(req), eventCreateSchema.parse(req.body)));
   },
-  rsvp(req: Request, res: Response) {
-    res.json(eventsService.toggleRsvp(currentUser(req).id, idParam.parse(req.params).id));
+  async rsvp(req: Request, res: Response) {
+    res.json(await eventsService.toggleRsvp(currentUser(req).id, idParam.parse(req.params).id));
   },
-  remove(req: Request, res: Response) {
-    eventsService.remove(currentUser(req), idParam.parse(req.params).id);
+  async remove(req: Request, res: Response) {
+    await eventsService.remove(currentUser(req), idParam.parse(req.params).id);
     res.status(204).end();
   },
 };
 
 export const noticesController = {
-  list(req: Request, res: Response) {
-    res.json(noticesService.list(currentUser(req), timetableQuerySchema.parse(req.query).section));
+  async list(req: Request, res: Response) {
+    res.json(await noticesService.list(currentUser(req), timetableQuerySchema.parse(req.query).section));
   },
-  create(req: Request, res: Response) {
-    res.status(201).json(noticesService.create(currentUser(req), noticeCreateSchema.parse(req.body)));
+  async create(req: Request, res: Response) {
+    res.status(201).json(await noticesService.create(currentUser(req), noticeCreateSchema.parse(req.body)));
   },
-  pin(req: Request, res: Response) {
-    res.json(noticesService.setPinned(currentUser(req), idParam.parse(req.params).id, noticePinSchema.parse(req.body).pinned));
+  async pin(req: Request, res: Response) {
+    res.json(await noticesService.setPinned(currentUser(req), idParam.parse(req.params).id, noticePinSchema.parse(req.body).pinned));
   },
-  remove(req: Request, res: Response) {
-    noticesService.remove(currentUser(req), idParam.parse(req.params).id);
+  async remove(req: Request, res: Response) {
+    await noticesService.remove(currentUser(req), idParam.parse(req.params).id);
     res.status(204).end();
   },
 };
 
 export const feedController = {
-  list(req: Request, res: Response) {
-    res.json(feedService.list(currentUser(req), feedQuerySchema.parse(req.query)));
+  async list(req: Request, res: Response) {
+    res.json(await feedService.list(currentUser(req), feedQuerySchema.parse(req.query)));
   },
   async create(req: Request, res: Response) {
     res.status(201).json(await feedService.create(currentUser(req), postCreateSchema.parse(req.body)));
   },
-  like(req: Request, res: Response) {
-    res.json(feedService.toggleLike(currentUser(req), idParam.parse(req.params).id));
+  async like(req: Request, res: Response) {
+    res.json(await feedService.toggleLike(currentUser(req), idParam.parse(req.params).id));
   },
-  image(req: Request, res: Response) {
-    const img = feedService.image(idParam.parse(req.params).id);
+  async image(req: Request, res: Response) {
+    const img = await feedService.image(idParam.parse(req.params).id);
     // Posts never change their photo, so browsers can keep it.
     res.set({ 'Content-Type': img.mime, 'Cache-Control': 'private, max-age=86400, immutable' }).send(Buffer.from(img.data));
   },
-  remove(req: Request, res: Response) {
-    feedService.remove(currentUser(req), idParam.parse(req.params).id);
+  async remove(req: Request, res: Response) {
+    await feedService.remove(currentUser(req), idParam.parse(req.params).id);
     res.status(204).end();
   },
 };

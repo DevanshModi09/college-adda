@@ -1,5 +1,7 @@
 import type { AssignmentStatus } from '@adda/shared';
 import { db } from '../db/database.ts';
+import { msOrNull } from '../db/convert.ts';
+import type { Assignment } from '../generated/prisma/client.ts';
 
 export interface AssignmentRow {
   subject: string;
@@ -9,28 +11,30 @@ export interface AssignmentRow {
   note: string;
 }
 
+const toRow = (a: Assignment): AssignmentRow => ({
+  subject: a.subject,
+  number: a.number,
+  status: a.status as AssignmentStatus,
+  due_at: msOrNull(a.dueAt),
+  note: a.note,
+});
+
 export const assignmentsRepo = {
-  forUser(userId: string): AssignmentRow[] {
-    return db()
-      .prepare('SELECT subject, number, status, due_at, note FROM assignments WHERE user_id = ?')
-      .all(userId) as unknown as AssignmentRow[];
+  async forUser(userId: string): Promise<AssignmentRow[]> {
+    return (await db().assignment.findMany({ where: { userId } })).map(toRow);
   },
 
-  find(userId: string, subject: string, number: number): AssignmentRow | null {
-    return (
-      (db()
-        .prepare('SELECT subject, number, status, due_at, note FROM assignments WHERE user_id = ? AND subject = ? AND number = ?')
-        .get(userId, subject, number) as AssignmentRow | undefined) ?? null
-    );
+  async find(userId: string, subject: string, number: number): Promise<AssignmentRow | null> {
+    const a = await db().assignment.findUnique({ where: { userId_subject_number: { userId, subject, number } } });
+    return a ? toRow(a) : null;
   },
 
-  upsert(userId: string, r: AssignmentRow): void {
-    db()
-      .prepare(
-        `INSERT INTO assignments (user_id, subject, number, status, due_at, note, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(user_id, subject, number) DO UPDATE SET
-           status = excluded.status, due_at = excluded.due_at, note = excluded.note, updated_at = excluded.updated_at`
-      )
-      .run(userId, r.subject, r.number, r.status, r.due_at, r.note, Date.now());
+  async upsert(userId: string, r: AssignmentRow): Promise<void> {
+    const data = { status: r.status, dueAt: r.due_at, note: r.note, updatedAt: Date.now() };
+    await db().assignment.upsert({
+      where: { userId_subject_number: { userId, subject: r.subject, number: r.number } },
+      create: { userId, subject: r.subject, number: r.number, ...data },
+      update: data,
+    });
   },
 };

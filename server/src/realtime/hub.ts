@@ -88,11 +88,11 @@ export function attachRealtime(server: Server) {
   /** Each player gets their own view of the game (RPS picks stay hidden). */
   const pushGame = (g: Game) => g.players.forEach((p) => toUser(p.id, { type: 'game:update', game: gameRules.view(g, p.id) }));
 
-  function playGame(c: Client, msg: Extract<z.infer<typeof clientMessage>, { type: `game:${string}` }>) {
+  async function playGame(c: Client, msg: Extract<z.infer<typeof clientMessage>, { type: `game:${string}` }>) {
     try {
       switch (msg.type) {
         case 'game:invite': {
-          const to = usersRepo.findById(msg.to);
+          const to = await usersRepo.findById(msg.to);
           if (!to || !presence.isOnline(to.id)) throw new GameError('They’re not online right now');
           return pushGame(gameRules.invite({ id: c.userId, name: c.name, color: c.color }, { id: to.id, name: to.name, color: to.color }, msg.kind));
         }
@@ -118,20 +118,21 @@ export function attachRealtime(server: Server) {
     if (world.leave(c.userId, c.id)) toWorld({ type: 'world:left', userId: c.userId });
   }
 
-  const pushRooms = () => broadcast({ type: 'rooms:live', rooms: roomsService.listWithMembers() });
-  const pushMembers = (roomId: string) => toRoom(roomId, { type: 'room:members', roomId, members: roomsService.members(roomId) });
+  const pushRooms = async () => broadcast({ type: 'rooms:live', rooms: await roomsService.listWithMembers() });
+  const pushMembers = async (roomId: string) => toRoom(roomId, { type: 'room:members', roomId, members: await roomsService.members(roomId) });
+  /** Members of the room + the live room list, after someone sits down, stands up or changes status. */
+  const pushRoom = (roomId: string) => Promise.all([pushMembers(roomId), pushRooms()]);
 
-  function leave(c: Client) {
+  async function leave(c: Client) {
     const roomId = c.roomId;
     if (!roomId) return;
     c.roomId = null;
     presence.leaveRoom(roomId, c.userId, c.id);
     if (presence.isEmpty(roomId)) roomTimers.drop(roomId);
-    pushMembers(roomId);
-    pushRooms();
+    await pushRoom(roomId);
   }
 
-  function handle(c: Client, raw: string) {
+  async function handle(c: Client, raw: string) {
     let parsed;
     try {
       parsed = clientMessage.safeParse(JSON.parse(raw));
@@ -148,22 +149,16 @@ export function attachRealtime(server: Server) {
       case 'room:join': {
         let room;
         try {
-          room = roomsService.get(msg.roomId);
+          room = await roomsService.get(msg.roomId);
         } catch {
           return send(c, { type: 'error', error: 'Desk not found' });
         }
-        leave(c);
+        await leave(c);
         c.roomId = room.id;
         presence.joinRoom(room.id, c.userId, c.id);
-        send(c, {
-          type: 'room:state',
-          room,
-          members: roomsService.members(room.id),
-          messages: roomsService.history(room.id),
-          timer: roomTimers.get(room.id),
-        });
-        pushMembers(room.id);
-        pushRooms();
+        const [members, messages] = await Promise.all([roomsService.members(room.id), roomsService.history(room.id)]);
+        send(c, { type: 'room:state', room, members, messages, timer: roomTimers.get(room.id) });
+        await pushRoom(room.id);
         return;
       }
 
@@ -209,16 +204,15 @@ export function attachRealtime(server: Server) {
         return playGame(c, msg);
 
       case 'room:status':
-        if (c.roomId && presence.setStatus(c.roomId, c.userId, msg.status)) {
-          pushMembers(c.roomId);
-          pushRooms();
-        }
+        if (c.roomId && presence.setStatus(c.roomId, c.userId, msg.status)) await pushRoom(c.roomId);
         return;
 
-      case 'room:chat':
-        if (!c.roomId) return;
-        toRoom(c.roomId, { type: 'room:chat', roomId: c.roomId, message: roomsService.postMessage(c.roomId, c.userId, msg.text) });
+      case 'room:chat': {
+        const roomId = c.roomId;
+        if (!roomId) return;
+        toRoom(roomId, { type: 'room:chat', roomId, message: await roomsService.postMessage(roomId, c.userId, msg.text) });
         return;
+      }
 
       case 'room:timer': {
         if (!c.roomId) return;
@@ -229,44 +223,56 @@ export function attachRealtime(server: Server) {
     }
   }
 
+  const MAX_PENDING = 20; // messages we'll hold while the session is being checked
+
   wss.on('connection', (ws, req) => {
-    const user = authService.userFromToken(readCookie(req, SESSION_COOKIE));
-    if (!user) return ws.close(4001, 'unauthorized');
+    // Checking the session is async now; messages that arrive meanwhile wait in this
+    // per-connection queue, which also keeps every message from one client in order
+    // (e.g. a chat line can't overtake the room:join before it).
+    let c: Client | null = null;
+    let pending = 0;
+    let queue: Promise<unknown> = (async () => {
+      const user = await authService.userFromToken(readCookie(req, SESSION_COOKIE)).catch(() => null);
+      if (!user || ws.readyState !== ws.OPEN) return ws.close(4001, 'unauthorized');
+      c = { id: crypto.randomUUID(), ws, userId: user.id, name: user.name, color: user.color, roomId: null, inWorld: false, alive: true, tokens: MAX_TOKENS };
+      clients.add(c);
+      if (presence.connect(user.id, c.id)) broadcast({ type: 'presence', userId: user.id, online: true });
+      send(c, { type: 'hello', online: presence.onlineIds() });
+      send(c, { type: 'rooms:live', rooms: await roomsService.listWithMembers() });
+    })();
+    const enqueue = (task: (client: Client) => Promise<unknown> | unknown) => {
+      queue = queue
+        .then(() => c && task(c))
+        .catch((err) => logger.error('ws handler failed', { err: String(err) }));
+    };
 
-    const c: Client = { id: crypto.randomUUID(), ws, userId: user.id, name: user.name, color: user.color, roomId: null, inWorld: false, alive: true, tokens: MAX_TOKENS };
-    clients.add(c);
-    if (presence.connect(user.id, c.id)) broadcast({ type: 'presence', userId: user.id, online: true });
-    send(c, { type: 'hello', online: presence.onlineIds() });
-    send(c, { type: 'rooms:live', rooms: roomsService.listWithMembers() });
-
-    ws.on('pong', () => (c.alive = true));
+    ws.on('pong', () => c && (c.alive = true));
     ws.on('message', (data) => {
-      // Movement has its own rate limit in world.move; everything else spends a token.
       const raw = data.toString();
+      if (!c && ++pending > MAX_PENDING) return; // flooding before auth finished
+      // Movement has its own rate limit in world.move; everything else spends a token.
       const isMove = raw.length < 200 && raw.includes('"world:move"');
-      if (!isMove) {
+      if (!isMove && c) {
         if (c.tokens <= 0) return;
         c.tokens--;
       }
-      try {
-        handle(c, raw);
-      } catch (err) {
-        logger.error('ws handler failed', { err });
-      }
+      enqueue((client) => handle(client, raw));
     });
     ws.on('close', () => {
-      leave(c);
-      leaveWorld(c);
-      clients.delete(c);
-      if (presence.disconnect(c.userId, c.id)) {
-        broadcast({ type: 'presence', userId: c.userId, online: false });
-        // Went offline mid-game: forfeit (or cancel the invite) so the other player isn't stuck.
-        const g = gameRules.activeFor(c.userId);
-        if (g) {
-          gameRules.leave(g.id, c.userId);
-          pushGame(g);
+      enqueue(async (client) => {
+        await leave(client);
+        leaveWorld(client);
+        clients.delete(client);
+        if (presence.disconnect(client.userId, client.id)) {
+          broadcast({ type: 'presence', userId: client.userId, online: false });
+          // Went offline mid-game: forfeit (or cancel the invite) so the other player isn't stuck.
+          const g = gameRules.activeFor(client.userId);
+          if (g) {
+            gameRules.leave(g.id, client.userId);
+            pushGame(g);
+          }
         }
-      }
+      });
     });
   });
 
@@ -278,7 +284,7 @@ export function attachRealtime(server: Server) {
   bus.on('deadlines:changed', () => broadcast({ type: 'deadlines:changed' }));
   bus.on('feed:changed', () => broadcast({ type: 'feed:changed' }));
   bus.on('notices:changed', ({ sectionKey }) => broadcast({ type: 'notices:changed', sectionKey }));
-  bus.on('rooms:changed', pushRooms);
+  bus.on('rooms:changed', () => void pushRooms().catch((err) => logger.error('rooms push failed', { err: String(err) })));
   bus.on('friends:changed', ({ to, kind, from }) => toUser(to, { type: 'friends:changed', kind, from }));
 
   const refill = setInterval(() => clients.forEach((c) => (c.tokens = Math.min(MAX_TOKENS, c.tokens + 5))), 1000);

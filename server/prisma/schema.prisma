@@ -1,0 +1,307 @@
+// College Adda on Neon (Lakebase Postgres).
+// Models map onto the snake_case tables the app has always used, so raw SQL stays readable.
+// Timestamps are epoch milliseconds (BIGINT), matching the API and the shared types.
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id
+  username     String   @unique
+  name         String
+  branch       String   @default("")
+  year         Int      @default(1)
+  section      String   @default("A")
+  role         String   @default("student") // 'student' | 'admin'
+  bio          String   @default("")
+  interests    String[] @default([])
+  color        String
+  passwordHash String   @map("password_hash")
+  isGuest      Boolean  @default(false) @map("is_guest")
+  createdAt    BigInt   @map("created_at")
+
+  sessions           Session[]
+  ownedDeadlines     Deadline[]           @relation("DeadlineOwner")
+  createdDeadlines   Deadline[]           @relation("DeadlineCreator")
+  completions        DeadlineCompletion[]
+  slots              TimetableSlot[]
+  rooms              Room[]
+  roomMessages       RoomMessage[]
+  sentMessages       DirectMessage[]      @relation("DmSender")
+  receivedMessages   DirectMessage[]      @relation("DmRecipient")
+  events             Event[]
+  eventRsvps         EventAttendee[]
+  friendRequests     Friendship[]         @relation("Requester")
+  friendInvites      Friendship[]         @relation("Addressee")
+  attendanceMarks    AttendanceMark[]
+  attendanceBaseline AttendanceBaseline[]
+  attendanceSettings AttendanceSettings?
+  assignments        Assignment[]
+  notices            Notice[]
+  posts              Post[]
+  postLikes          PostLike[]
+
+  @@map("users")
+}
+
+model Session {
+  tokenHash String @id @map("token_hash")
+  userId    String @map("user_id")
+  createdAt BigInt @map("created_at")
+  expiresAt BigInt @map("expires_at")
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Deadline {
+  id          String               @id
+  kind        String // 'personal' | 'official'
+  ownerId     String?              @map("owner_id")
+  audience    String               @default("") // '' = everyone, else a section key
+  createdBy   String?              @map("created_by")
+  title       String
+  subject     String               @default("")
+  dueAt       BigInt               @map("due_at")
+  priority    String // 'low' | 'med' | 'high'
+  createdAt   BigInt               @map("created_at")
+  owner       User?                @relation("DeadlineOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  creator     User?                @relation("DeadlineCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  completions DeadlineCompletion[]
+
+  @@index([ownerId, dueAt])
+  @@index([kind, audience, dueAt])
+  @@map("deadlines")
+}
+
+model DeadlineCompletion {
+  deadlineId String   @map("deadline_id")
+  userId     String   @map("user_id")
+  doneAt     BigInt   @map("done_at")
+  deadline   Deadline @relation(fields: [deadlineId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([deadlineId, userId])
+  @@map("deadline_completions")
+}
+
+model Section {
+  key    String @id // 'CSE|2|B'
+  branch String
+  year   Int
+  code   String
+  label  String @default("")
+  term   String @default("")
+  source String @default("")
+
+  @@map("sections")
+}
+
+model TimetableSlot {
+  id         String @id
+  sectionKey String @map("section_key")
+  day        Int // 0 = Sunday
+  start      String // HH:MM
+  end        String
+  subject    String
+  kind       String
+  room       String  @default("")
+  teacher    String  @default("")
+  createdBy  String? @map("created_by") // null = official (imported)
+  createdAt  BigInt  @map("created_at")
+  creator    User?   @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([sectionKey, day, start])
+  @@index([day, start])
+  @@map("timetable_slots")
+}
+
+model Room {
+  id        String        @id
+  name      String
+  topic     String        @default("")
+  lang      String        @default("Any")
+  createdBy String?       @map("created_by")
+  createdAt BigInt        @map("created_at")
+  creator   User?         @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  messages  RoomMessage[]
+
+  @@map("rooms")
+}
+
+model RoomMessage {
+  id        String @id
+  roomId    String @map("room_id")
+  userId    String @map("user_id")
+  text      String
+  createdAt BigInt @map("created_at")
+  room      Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+  @@map("room_messages")
+}
+
+model DirectMessage {
+  id          String  @id
+  senderId    String  @map("sender_id")
+  recipientId String  @map("recipient_id")
+  text        String
+  createdAt   BigInt  @map("created_at")
+  readAt      BigInt? @map("read_at")
+  sender      User    @relation("DmSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient   User    @relation("DmRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, recipientId, createdAt])
+  @@index([recipientId, readAt])
+  @@map("direct_messages")
+}
+
+model Event {
+  id          String          @id
+  title       String
+  description String          @default("")
+  location    String          @default("")
+  category    String
+  startAt     BigInt          @map("start_at")
+  endAt       BigInt?         @map("end_at")
+  createdBy   String          @map("created_by")
+  createdAt   BigInt          @map("created_at")
+  host        User            @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  attendees   EventAttendee[]
+
+  @@index([startAt])
+  @@map("events")
+}
+
+model EventAttendee {
+  eventId String @map("event_id")
+  userId  String @map("user_id")
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, userId])
+  @@map("event_attendees")
+}
+
+model Friendship {
+  requesterId String  @map("requester_id")
+  addresseeId String  @map("addressee_id")
+  status      String // 'pending' | 'accepted'
+  createdAt   BigInt  @map("created_at")
+  respondedAt BigInt? @map("responded_at")
+  requester   User    @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User    @relation("Addressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@id([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@map("friendships")
+}
+
+model AttendanceMark {
+  userId   String @map("user_id")
+  date     String // YYYY-MM-DD
+  slotId   String @map("slot_id")
+  subject  String
+  status   String // 'present' | 'absent' | 'cancelled'
+  markedAt BigInt @map("marked_at")
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, date, slotId])
+  @@index([userId, subject])
+  @@map("attendance_marks")
+}
+
+model AttendanceBaseline {
+  userId   String @map("user_id")
+  subject  String
+  attended Int
+  held     Int
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, subject])
+  @@map("attendance_baselines")
+}
+
+model AttendanceSettings {
+  userId    String  @id @map("user_id")
+  target    Int     @default(75)
+  semEnd    String? @map("sem_end")
+  setupDone Boolean @default(false) @map("setup_done")
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("attendance_settings")
+}
+
+model Assignment {
+  userId    String  @map("user_id")
+  subject   String
+  number    Int // 1..5
+  status    String // 'todo' | 'doing' | 'submitted'
+  dueAt     BigInt? @map("due_at")
+  note      String  @default("")
+  updatedAt BigInt  @map("updated_at")
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, subject, number])
+  @@map("assignments")
+}
+
+model Notice {
+  id         String  @id
+  sectionKey String  @map("section_key")
+  authorId   String  @map("author_id")
+  body       String
+  pinned     Boolean @default(false)
+  createdAt  BigInt  @map("created_at")
+  author     User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([sectionKey, pinned, createdAt])
+  @@map("notices")
+}
+
+model Post {
+  id            String     @id
+  authorId      String     @map("author_id")
+  body          String
+  createdAt     BigInt     @map("created_at")
+  imageUrl      String?    @map("image_url") // hosted on Cloudinary
+  imagePublicId String?    @map("image_public_id")
+  author        User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes         PostLike[]
+  image         PostImage?
+
+  @@index([createdAt])
+  @@map("posts")
+}
+
+model PostLike {
+  postId String @map("post_id")
+  userId String @map("user_id")
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@map("post_likes")
+}
+
+/// Photo bytes when Cloudinary isn't configured (local dev, tests).
+model PostImage {
+  postId String @id @map("post_id")
+  mime   String
+  data   Bytes
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("post_images")
+}

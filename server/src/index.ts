@@ -1,6 +1,6 @@
 import http from 'node:http';
 import { env } from './config/env.ts';
-import { db } from './db/database.ts';
+import { disconnect } from './db/database.ts';
 import { createApp } from './app.ts';
 import { attachRealtime } from './realtime/hub.ts';
 import { roomsService } from './services/rooms.service.ts';
@@ -10,13 +10,13 @@ import { authService } from './services/auth.service.ts';
 import { timetableService } from './services/timetable.service.ts';
 import { logger } from './utils/logger.ts';
 
-db(); // open + migrate before accepting traffic
-roomsService.seedDefaults();
-timetableService.importCatalogIfEmpty();
-sessionsRepo.deleteExpired();
-const staleGuests = authService.deleteStaleGuests();
+// Schema changes are applied separately (`npm run db:migrate`) before the app starts.
+await roomsService.seedDefaults();
+await timetableService.importCatalogIfEmpty();
+await sessionsRepo.deleteExpired();
+const staleGuests = await authService.deleteStaleGuests();
 if (staleGuests) logger.info(`removed ${staleGuests} expired guest account(s)`);
-const promoted = usersRepo.promoteAdmins(env.adminUsernames);
+const promoted = await usersRepo.promoteAdmins(env.adminUsernames);
 if (promoted) logger.info(`promoted ${promoted} user(s) to admin`);
 
 const server = http.createServer(createApp());
@@ -29,8 +29,7 @@ function shutdown(signal: string) {
   wss.clients.forEach((ws) => ws.close(1001, 'server restarting'));
   wss.close();
   server.close(() => {
-    db().close();
-    process.exit(0);
+    void disconnect().finally(() => process.exit(0));
   });
   setTimeout(() => process.exit(1), 5000).unref();
 }

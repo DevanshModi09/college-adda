@@ -17,79 +17,79 @@ import {
   deadlineCreateSchema, deadlineUpdateSchema, freeRoomsQuerySchema, idParam, timetableQuerySchema } from '../validators/schemas.ts';
 
 export const deadlinesController = {
-  list(req: Request, res: Response) {
-    res.json(deadlinesService.list(currentUser(req)));
+  async list(req: Request, res: Response) {
+    res.json(await deadlinesService.list(currentUser(req)));
   },
-  create(req: Request, res: Response) {
-    res.status(201).json(deadlinesService.create(currentUser(req), deadlineCreateSchema.parse(req.body)));
+  async create(req: Request, res: Response) {
+    res.status(201).json(await deadlinesService.create(currentUser(req), deadlineCreateSchema.parse(req.body)));
   },
-  update(req: Request, res: Response) {
+  async update(req: Request, res: Response) {
     const { id } = idParam.parse(req.params);
-    res.json(deadlinesService.update(currentUser(req), id, deadlineUpdateSchema.parse(req.body)));
+    res.json(await deadlinesService.update(currentUser(req), id, deadlineUpdateSchema.parse(req.body)));
   },
-  remove(req: Request, res: Response) {
-    deadlinesService.remove(currentUser(req), idParam.parse(req.params).id);
+  async remove(req: Request, res: Response) {
+    await deadlinesService.remove(currentUser(req), idParam.parse(req.params).id);
     res.status(204).end();
   },
 };
 
 export const assignmentsController = {
-  list(req: Request, res: Response) {
-    res.json(assignmentsService.list(currentUser(req)));
+  async list(req: Request, res: Response) {
+    res.json(await assignmentsService.list(currentUser(req)));
   },
-  update(req: Request, res: Response) {
-    res.json(assignmentsService.update(currentUser(req), assignmentUpdateSchema.parse(req.body)));
+  async update(req: Request, res: Response) {
+    res.json(await assignmentsService.update(currentUser(req), assignmentUpdateSchema.parse(req.body)));
   },
 };
 
 export const attendanceController = {
-  overview(req: Request, res: Response) {
-    res.json(attendanceService.overview(currentUser(req), attendanceTodaySchema.parse(req.query).today));
+  async overview(req: Request, res: Response) {
+    res.json(await attendanceService.overview(currentUser(req), attendanceTodaySchema.parse(req.query).today));
   },
-  day(req: Request, res: Response) {
-    res.json(attendanceService.day(currentUser(req), attendanceDaySchema.parse(req.query).date));
+  async day(req: Request, res: Response) {
+    res.json(await attendanceService.day(currentUser(req), attendanceDaySchema.parse(req.query).date));
   },
-  mark(req: Request, res: Response) {
+  async mark(req: Request, res: Response) {
     const b = attendanceMarkSchema.parse(req.body);
-    res.json(attendanceService.mark(currentUser(req), b.date, b.today, b.slotId, b.status));
+    res.json(await attendanceService.mark(currentUser(req), b.date, b.today, b.slotId, b.status));
   },
-  markAll(req: Request, res: Response) {
+  async markAll(req: Request, res: Response) {
     const b = attendanceAllSchema.parse(req.body);
-    res.json(attendanceService.markAllPresent(currentUser(req), b.date, b.today));
+    res.json(await attendanceService.markAllPresent(currentUser(req), b.date, b.today));
   },
-  baseline(req: Request, res: Response) {
+  async baseline(req: Request, res: Response) {
     const b = attendanceBaselineSchema.parse(req.body);
-    attendanceService.setBaseline(currentUser(req), b.subject, b.attended, b.held);
+    await attendanceService.setBaseline(currentUser(req), b.subject, b.attended, b.held);
     res.status(204).end();
   },
-  setup(req: Request, res: Response) {
-    attendanceService.setup(currentUser(req), attendanceSetupSchema.parse(req.body));
+  async setup(req: Request, res: Response) {
+    await attendanceService.setup(currentUser(req), attendanceSetupSchema.parse(req.body));
     res.status(204).end();
   },
-  settings(req: Request, res: Response) {
+  async settings(req: Request, res: Response) {
     const b = attendanceSettingsSchema.parse(req.body);
-    attendanceService.saveSettings(currentUser(req), b.target, b.semEnd);
+    await attendanceService.saveSettings(currentUser(req), b.target, b.semEnd);
     res.status(204).end();
   },
 };
 
 export const timetableController = {
-  list(req: Request, res: Response) {
-    res.json(timetableService.list(currentUser(req), timetableQuerySchema.parse(req.query).section));
+  async list(req: Request, res: Response) {
+    res.json(await timetableService.list(currentUser(req), timetableQuerySchema.parse(req.query).section));
   },
-  freeRooms(req: Request, res: Response) {
+  async freeRooms(req: Request, res: Response) {
     const { day, time } = freeRoomsQuerySchema.parse(req.query);
-    res.json(timetableService.freeRooms(day, time));
+    res.json(await timetableService.freeRooms(day, time));
   },
   /** Public (the sign-up form needs it); includes the viewer's own section when logged in. */
-  sections(req: Request, res: Response) {
-    res.json(timetableService.sections(req.user));
+  async sections(req: Request, res: Response) {
+    res.json(await timetableService.sections(req.user));
   },
-  create(req: Request, res: Response) {
-    res.status(201).json(timetableService.create(currentUser(req), classCreateSchema.parse(req.body)));
+  async create(req: Request, res: Response) {
+    res.status(201).json(await timetableService.create(currentUser(req), classCreateSchema.parse(req.body)));
   },
-  remove(req: Request, res: Response) {
-    timetableService.remove(currentUser(req), idParam.parse(req.params).id);
+  async remove(req: Request, res: Response) {
+    await timetableService.remove(currentUser(req), idParam.parse(req.params).id);
     res.status(204).end();
   },
 };

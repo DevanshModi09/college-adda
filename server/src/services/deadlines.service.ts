@@ -25,8 +25,8 @@ function present(user: UserRecord, d: DeadlineRecord & { done: boolean }): Deadl
   };
 }
 
-function visible(user: UserRecord, id: string) {
-  const d = deadlinesRepo.findFor(user.id, id);
+async function visible(user: UserRecord, id: string) {
+  const d = await deadlinesRepo.findFor(user.id, id);
   const allowed =
     d && (d.kind === 'personal' ? d.ownerId === user.id : d.audience === '' || d.audience === sectionKeyOf(user) || user.role === 'admin');
   if (!d || !allowed) throw notFound('Deadline');
@@ -34,10 +34,10 @@ function visible(user: UserRecord, id: string) {
 }
 
 export const deadlinesService = {
-  list: (user: UserRecord) => deadlinesRepo.visibleTo(user.id, sectionKeyOf(user)).map((d) => present(user, d)),
+  list: async (user: UserRecord) => (await deadlinesRepo.visibleTo(user.id, sectionKeyOf(user))).map((d) => present(user, d)),
 
   /** Students create private deadlines; admins can additionally post official ones. */
-  create(user: UserRecord, input: DeadlineCreate): Deadline {
+  async create(user: UserRecord, input: DeadlineCreate): Promise<Deadline> {
     const { official, audience, ...fields } = input;
     if (official && user.role !== 'admin') throw forbidden('Only admins can post official deadlines');
     if (official && audience && !parseSectionKey(audience)) throw badRequest('Unknown section');
@@ -51,30 +51,30 @@ export const deadlinesService = {
       ...fields,
       createdAt: Date.now(),
     };
-    deadlinesRepo.insert(record);
+    await deadlinesRepo.insert(record);
     if (official) bus.emit('deadlines:changed');
     return present(user, { ...record, done: false });
   },
 
-  update(user: UserRecord, id: string, patch: DeadlineUpdate): Deadline {
-    const current = visible(user, id);
+  async update(user: UserRecord, id: string, patch: DeadlineUpdate): Promise<Deadline> {
+    const current = await visible(user, id);
     const { done, ...fields } = patch;
     const edits = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined));
 
     if (Object.keys(edits).length && !canEdit(user, current)) throw forbidden('Only admins can change official deadlines');
     const next = { ...current, ...edits, done: done ?? current.done };
-    transaction(() => {
-      if (Object.keys(edits).length) deadlinesRepo.updateFields(next);
-      if (done !== undefined) deadlinesRepo.setDone(id, user.id, done); // per-user, even for official ones
+    await transaction(async () => {
+      if (Object.keys(edits).length) await deadlinesRepo.updateFields(next);
+      if (done !== undefined) await deadlinesRepo.setDone(id, user.id, done); // per-user, even for official ones
     });
     if (Object.keys(edits).length && current.kind === 'official') bus.emit('deadlines:changed');
     return present(user, next);
   },
 
-  remove(user: UserRecord, id: string): void {
-    const current = visible(user, id);
+  async remove(user: UserRecord, id: string): Promise<void> {
+    const current = await visible(user, id);
     if (!canEdit(user, current)) throw forbidden("Official deadlines can only be removed by an admin");
-    deadlinesRepo.delete(id);
+    await deadlinesRepo.delete(id);
     if (current.kind === 'official') bus.emit('deadlines:changed');
   },
 };

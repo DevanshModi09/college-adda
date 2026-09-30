@@ -22,29 +22,28 @@ export function toPublicUser(u: UserRecord): PublicUser {
 }
 
 export const usersService = {
-  get(id: string): PublicUser {
-    const u = usersRepo.findById(id);
+  async get(id: string): Promise<PublicUser> {
+    const u = await usersRepo.findById(id);
     if (!u) throw notFound('User');
     return toPublicUser(u);
   },
 
-  publicByIds(ids: string[]): Map<string, PublicUser> {
-    return new Map(usersRepo.findManyByIds([...new Set(ids)]).map((u) => [u.id, toPublicUser(u)]));
+  async publicByIds(ids: string[]): Promise<Map<string, PublicUser>> {
+    return new Map((await usersRepo.findManyByIds([...new Set(ids)])).map((u) => [u.id, toPublicUser(u)]));
   },
 
-  search(viewerId: string, q: { q?: string; branch?: string; year?: number; section?: string; online?: boolean }): PublicUser[] {
-    return usersRepo
-      .search({ ...q, excludeId: viewerId, limit: 200 })
+  async search(viewerId: string, q: { q?: string; branch?: string; year?: number; section?: string; online?: boolean }): Promise<PublicUser[]> {
+    return (await usersRepo.search({ ...q, excludeId: viewerId, limit: 200 }))
       .map(toPublicUser)
       .filter((u) => !q.online || u.online)
       .sort((a, b) => Number(b.online) - Number(a.online));
   },
 
-  updateProfile(id: string, input: ProfileInput): PublicUser {
-    const u = usersRepo.findById(id);
+  async updateProfile(id: string, input: ProfileInput): Promise<PublicUser> {
+    const u = await usersRepo.findById(id);
     if (!u) throw notFound('User');
     const next = { ...u, ...input };
-    usersRepo.updateProfile(id, next);
+    await usersRepo.updateProfile(id, next);
     return toPublicUser(next);
   },
 };

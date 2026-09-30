@@ -1,4 +1,6 @@
 import { db } from '../db/database.ts';
+import { ms, msOrNull } from '../db/convert.ts';
+import type { Event } from '../generated/prisma/client.ts';
 
 export interface EventRecord {
   id: string;
@@ -12,75 +14,59 @@ export interface EventRecord {
   createdAt: number;
 }
 
-interface Row {
-  id: string;
-  title: string;
-  description: string;
-  location: string;
-  category: string;
-  start_at: number;
-  end_at: number | null;
-  created_by: string;
-  created_at: number;
-}
-
-const toRecord = (r: Row): EventRecord => ({
-  id: r.id,
-  title: r.title,
-  description: r.description,
-  location: r.location,
-  category: r.category,
-  startAt: r.start_at,
-  endAt: r.end_at,
-  createdBy: r.created_by,
-  createdAt: r.created_at,
+const toRecord = (e: Event): EventRecord => ({
+  id: e.id,
+  title: e.title,
+  description: e.description,
+  location: e.location,
+  category: e.category,
+  startAt: ms(e.startAt),
+  endAt: msOrNull(e.endAt),
+  createdBy: e.createdBy,
+  createdAt: ms(e.createdAt),
 });
 
 export const eventsRepo = {
-  listUpcoming(since: number): EventRecord[] {
-    const rows = db()
-      .prepare('SELECT * FROM events WHERE COALESCE(end_at, start_at) >= ? ORDER BY start_at LIMIT 200')
-      .all(since) as unknown as Row[];
+  /** Events still running or ahead: COALESCE(end_at, start_at) >= since. */
+  async listUpcoming(since: number): Promise<EventRecord[]> {
+    const rows = await db().event.findMany({
+      where: { OR: [{ endAt: { gte: since } }, { endAt: null, startAt: { gte: since } }] },
+      orderBy: { startAt: 'asc' },
+      take: 200,
+    });
     return rows.map(toRecord);
   },
 
-  find(id: string): EventRecord | null {
-    const row = db().prepare('SELECT * FROM events WHERE id = ?').get(id) as Row | undefined;
-    return row ? toRecord(row) : null;
+  async find(id: string): Promise<EventRecord | null> {
+    const e = await db().event.findUnique({ where: { id } });
+    return e ? toRecord(e) : null;
   },
 
-  insert(e: EventRecord): void {
-    db()
-      .prepare(
-        `INSERT INTO events (id, title, description, location, category, start_at, end_at, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(e.id, e.title, e.description, e.location, e.category, e.startAt, e.endAt, e.createdBy, e.createdAt);
+  async insert(e: EventRecord): Promise<void> {
+    await db().event.create({ data: { ...e } });
   },
 
-  delete(id: string): void {
-    db().prepare('DELETE FROM events WHERE id = ?').run(id);
+  async delete(id: string): Promise<void> {
+    await db().event.deleteMany({ where: { id } });
   },
 
-  attendeeIds(eventIds: string[]): Map<string, string[]> {
+  async attendeeIds(eventIds: string[]): Promise<Map<string, string[]>> {
     const out = new Map<string, string[]>(eventIds.map((id) => [id, []]));
     if (!eventIds.length) return out;
-    const rows = db()
-      .prepare(`SELECT event_id, user_id FROM event_attendees WHERE event_id IN (${eventIds.map(() => '?').join(',')})`)
-      .all(...eventIds) as unknown as { event_id: string; user_id: string }[];
-    for (const r of rows) out.get(r.event_id)?.push(r.user_id);
+    const rows = await db().eventAttendee.findMany({ where: { eventId: { in: eventIds } } });
+    for (const r of rows) out.get(r.eventId)?.push(r.userId);
     return out;
   },
 
-  isAttending(eventId: string, userId: string): boolean {
-    return !!db().prepare('SELECT 1 FROM event_attendees WHERE event_id = ? AND user_id = ?').get(eventId, userId);
+  async isAttending(eventId: string, userId: string): Promise<boolean> {
+    return !!(await db().eventAttendee.findUnique({ where: { eventId_userId: { eventId, userId } } }));
   },
 
-  addAttendee(eventId: string, userId: string): void {
-    db().prepare('INSERT OR IGNORE INTO event_attendees (event_id, user_id) VALUES (?, ?)').run(eventId, userId);
+  async addAttendee(eventId: string, userId: string): Promise<void> {
+    await db().eventAttendee.upsert({ where: { eventId_userId: { eventId, userId } }, create: { eventId, userId }, update: {} });
   },
 
-  removeAttendee(eventId: string, userId: string): void {
-    db().prepare('DELETE FROM event_attendees WHERE event_id = ? AND user_id = ?').run(eventId, userId);
+  async removeAttendee(eventId: string, userId: string): Promise<void> {
+    await db().eventAttendee.deleteMany({ where: { eventId, userId } });
   },
 };

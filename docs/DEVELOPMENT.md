@@ -7,13 +7,16 @@ Deadlines, section timetables, live code-along rooms, people, chats and events f
 | Layer    | Tech |
 |----------|------|
 | Client   | React 19 + TypeScript, Vite, React Router, TanStack Query, Zustand |
-| Server   | Node ≥ 24 (runs TypeScript natively), Express 5, `ws`, Zod, built-in `node:sqlite` |
+| Server   | Node ≥ 24 (runs TypeScript natively), Express 5, `ws`, Zod |
+| Database | Neon (Lakebase Postgres) via Prisma 7 (`@prisma/adapter-pg`) |
 | Shared   | `shared/` — types for the REST API and the websocket protocol |
 
 ## Run it
 
 ```bash
 npm install
+cp server/.env.example server/.env   # then fill DATABASE_URL(_UNPOOLED) and TEST_DATABASE_URL from Neon
+npm run db:migrate -w @adda/server   # apply Prisma migrations to your Neon branch
 npm run seed -w @adda/server   # optional demo data (password: adda-demo-123)
 npm run dev                    # API on :3000, web on :5173 (proxied)
 ```
@@ -21,7 +24,7 @@ npm run dev                    # API on :3000, web on :5173 (proxied)
 Production: `npm run build && ADMIN_USERNAMES=you npm start` — one process serves the API, the websocket and the built client.
 
 ```bash
-npm test          # server integration tests (HTTP + websocket, in-memory DB)
+npm test          # server integration tests (HTTP + websocket) on the Neon test branch; wipes it each run
 npm run typecheck # server + client
 ```
 
@@ -29,7 +32,8 @@ npm run typecheck # server + client
 
 ```
 config/        env
-db/            connection, append-only migrations (PRAGMA user_version)
+db/            Prisma client (pooled Neon connection) + transaction() helper
+../prisma/     schema.prisma and migrations (`npm run db:migrate:dev -w @adda/server` to add one)
 repositories/  SQL only, row <-> model mapping
 services/      business rules and permissions (throw HttpError)
 controllers/   parse input with Zod, call a service, send JSON

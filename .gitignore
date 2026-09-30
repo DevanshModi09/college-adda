@@ -8,3 +8,8 @@ server/data/
 *.db-wal
 *.db-shm
 .DS_Store
+
+# Prisma client is generated on install (server/package.json postinstall)
+server/src/generated/
+# Neon CLI workspace link
+.neon

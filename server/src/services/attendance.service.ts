@@ -14,59 +14,65 @@ const weekday = (d: string) => new Date(parse(d)).getUTCDay();
 
 export const attendanceService = {
   /** The viewer's classes on `date` (from their section timetable) with any marks. */
-  day(user: UserRecord, date: string): AttendanceClass[] {
-    const marks = new Map(attendanceRepo.marksOn(user.id, date).map((m) => [m.slot_id, m.status]));
-    return timetableService
-      .list(user)
+  async day(user: UserRecord, date: string): Promise<AttendanceClass[]> {
+    const [markRows, slots] = await Promise.all([attendanceRepo.marksOn(user.id, date), timetableService.list(user)]);
+    const marks = new Map(markRows.map((m) => [m.slot_id, m.status]));
+    return slots
       .filter((s) => s.day === weekday(date))
       .sort((a, b) => a.start.localeCompare(b.start))
       .map((s) => ({ slotId: s.id, subject: s.subject, kind: s.kind, start: s.start, end: s.end, room: s.room, status: marks.get(s.id) ?? null }));
   },
 
-  mark(user: UserRecord, date: string, today: string, slotId: string, status: AttendanceStatus | null): AttendanceClass[] {
+  async mark(user: UserRecord, date: string, today: string, slotId: string, status: AttendanceStatus | null): Promise<AttendanceClass[]> {
     if (date > today) throw badRequest("Can't mark a class that hasn't happened yet");
-    const slot = this.day(user, date).find((c) => c.slotId === slotId);
+    const slot = (await this.day(user, date)).find((c) => c.slotId === slotId);
     if (!slot) throw notFound('Class on that day');
-    if (status) attendanceRepo.setMark(user.id, date, slotId, slot.subject, status);
-    else attendanceRepo.clearMark(user.id, date, slotId);
+    if (status) await attendanceRepo.setMark(user.id, date, slotId, slot.subject, status);
+    else await attendanceRepo.clearMark(user.id, date, slotId);
     return this.day(user, date);
   },
 
   /** Marks every still-unmarked class that day as present. */
-  markAllPresent(user: UserRecord, date: string, today: string): AttendanceClass[] {
+  async markAllPresent(user: UserRecord, date: string, today: string): Promise<AttendanceClass[]> {
     if (date > today) throw badRequest("Can't mark a day that hasn't happened yet");
-    const classes = this.day(user, date);
-    transaction(() => {
-      for (const c of classes) if (!c.status) attendanceRepo.setMark(user.id, date, c.slotId, c.subject, 'present');
+    const classes = await this.day(user, date);
+    await transaction(async () => {
+      for (const c of classes) if (!c.status) await attendanceRepo.setMark(user.id, date, c.slotId, c.subject, 'present');
     });
     return this.day(user, date);
   },
 
-  setBaseline(user: UserRecord, subject: string, attended: number, held: number): void {
+  async setBaseline(user: UserRecord, subject: string, attended: number, held: number): Promise<void> {
     if (attended > held) throw badRequest('Attended can’t be more than held');
-    attendanceRepo.setBaseline(user.id, subject, attended, held);
+    await attendanceRepo.setBaseline(user.id, subject, attended, held);
   },
 
-  saveSettings(user: UserRecord, target: number, semEnd: string | null): void {
-    attendanceRepo.saveSettings(user.id, target, semEnd);
+  async saveSettings(user: UserRecord, target: number, semEnd: string | null): Promise<void> {
+    await attendanceRepo.saveSettings(user.id, target, semEnd);
   },
 
   /** First-run setup: ERP counts for every subject + settings, all or nothing. */
-  setup(user: UserRecord, input: { target: number; semEnd: string | null; baselines: { subject: string; attended: number; held: number }[] }): void {
+  async setup(user: UserRecord, input: { target: number; semEnd: string | null; baselines: { subject: string; attended: number; held: number }[] }): Promise<void> {
     const bad = input.baselines.find((b) => b.attended > b.held);
     if (bad) throw badRequest(`${bad.subject}: attended can’t be more than held`);
-    transaction(() => {
-      attendanceRepo.saveSettings(user.id, input.target, input.semEnd);
-      for (const b of input.baselines) attendanceRepo.setBaseline(user.id, b.subject, b.attended, b.held);
-      attendanceRepo.markSetupDone(user.id);
+    await transaction(async () => {
+      await attendanceRepo.saveSettings(user.id, input.target, input.semEnd);
+      for (const b of input.baselines) await attendanceRepo.setBaseline(user.id, b.subject, b.attended, b.held);
+      await attendanceRepo.markSetupDone(user.id);
     });
   },
 
-  overview(user: UserRecord, today: string): AttendanceOverview {
-    const settings = attendanceRepo.settings(user.id);
-    const slots = timetableService.list(user);
-    const totals = new Map(attendanceRepo.totals(user.id).map((t) => [t.subject, t]));
-    const baselines = new Map(attendanceRepo.baselines(user.id).map((b) => [b.subject, b]));
+  async overview(user: UserRecord, today: string): Promise<AttendanceOverview> {
+    const from = format(parse(today) - 13 * DAY_MS);
+    const [settings, slots, totalRows, baselineRows, marked] = await Promise.all([
+      attendanceRepo.settings(user.id),
+      timetableService.list(user),
+      attendanceRepo.totals(user.id),
+      attendanceRepo.baselines(user.id),
+      attendanceRepo.markedDatesSince(user.id, from),
+    ]);
+    const totals = new Map(totalRows.map((t) => [t.subject, t]));
+    const baselines = new Map(baselineRows.map((b) => [b.subject, b]));
 
     // Weekly frequency per subject, for the forecast.
     const kinds = new Map<string, ClassKind>();
@@ -105,8 +111,6 @@ export const attendanceService = {
       .sort((a, b) => Number(a.kind === 'Lab') - Number(b.kind === 'Lab') || a.subject.localeCompare(b.subject));
 
     // Last 14 days with classes but zero marks: nudge the student to catch up.
-    const from = format(parse(today) - 13 * DAY_MS);
-    const marked = attendanceRepo.markedDatesSince(user.id, from);
     const classDays = new Set(slots.map((s) => s.day));
     const unmarkedDays: string[] = [];
     for (let t = parse(today); t >= parse(from); t -= DAY_MS) {

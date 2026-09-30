@@ -1,5 +1,7 @@
 import type { Priority } from '@adda/shared';
 import { db } from '../db/database.ts';
+import { ms } from '../db/convert.ts';
+import type { Deadline } from '../generated/prisma/client.ts';
 
 export interface DeadlineRecord {
   id: string;
@@ -14,81 +16,67 @@ export interface DeadlineRecord {
   createdAt: number;
 }
 
-interface Row {
-  id: string;
-  kind: 'personal' | 'official';
-  owner_id: string | null;
-  audience: string;
-  created_by: string | null;
-  title: string;
-  subject: string;
-  due_at: number;
-  priority: Priority;
-  created_at: number;
-  done: number;
-}
+type WithDone = DeadlineRecord & { done: boolean };
 
-const toRecord = (r: Row): DeadlineRecord & { done: boolean } => ({
-  id: r.id,
-  kind: r.kind,
-  ownerId: r.owner_id,
-  audience: r.audience,
-  createdBy: r.created_by,
-  title: r.title,
-  subject: r.subject,
-  dueAt: r.due_at,
-  priority: r.priority,
-  createdAt: r.created_at,
-  done: r.done === 1,
+const toRecord = (d: Deadline & { completions: unknown[] }): WithDone => ({
+  id: d.id,
+  kind: d.kind as DeadlineRecord['kind'],
+  ownerId: d.ownerId,
+  audience: d.audience,
+  createdBy: d.createdBy,
+  title: d.title,
+  subject: d.subject,
+  dueAt: ms(d.dueAt),
+  priority: d.priority as Priority,
+  createdAt: ms(d.createdAt),
+  done: d.completions.length > 0,
 });
 
-const SELECT_WITH_DONE = `
-  SELECT d.*, EXISTS (SELECT 1 FROM deadline_completions c WHERE c.deadline_id = d.id AND c.user_id = :viewer) AS done
-  FROM deadlines d`;
+// "Done" is per viewer: include only the viewer's completion row.
+const withDone = (viewerId: string) => ({ completions: { where: { userId: viewerId }, select: { userId: true } } });
 
 export const deadlinesRepo = {
   /** Personal deadlines of the viewer + official ones addressed to everyone or the viewer's section. */
-  visibleTo(viewerId: string, sectionKey: string) {
-    const rows = db()
-      .prepare(
-        `${SELECT_WITH_DONE}
-         WHERE (d.kind = 'personal' AND d.owner_id = :viewer)
-            OR (d.kind = 'official' AND d.audience IN ('', :section))
-         ORDER BY d.due_at`
-      )
-      .all({ viewer: viewerId, section: sectionKey }) as unknown as Row[];
+  async visibleTo(viewerId: string, sectionKey: string): Promise<WithDone[]> {
+    const rows = await db().deadline.findMany({
+      where: {
+        OR: [
+          { kind: 'personal', ownerId: viewerId },
+          { kind: 'official', audience: { in: ['', sectionKey] } },
+        ],
+      },
+      include: withDone(viewerId),
+      orderBy: { dueAt: 'asc' },
+    });
     return rows.map(toRecord);
   },
 
-  findFor(viewerId: string, id: string) {
-    const row = db().prepare(`${SELECT_WITH_DONE} WHERE d.id = :id`).get({ viewer: viewerId, id }) as Row | undefined;
-    return row ? toRecord(row) : null;
+  async findFor(viewerId: string, id: string): Promise<WithDone | null> {
+    const d = await db().deadline.findUnique({ where: { id }, include: withDone(viewerId) });
+    return d ? toRecord(d) : null;
   },
 
-  insert(d: DeadlineRecord): void {
-    db()
-      .prepare(
-        `INSERT INTO deadlines (id, kind, owner_id, audience, created_by, title, subject, due_at, priority, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(d.id, d.kind, d.ownerId, d.audience, d.createdBy, d.title, d.subject, d.dueAt, d.priority, d.createdAt);
+  async insert(d: DeadlineRecord): Promise<void> {
+    await db().deadline.create({ data: { ...d } });
   },
 
-  updateFields(d: Pick<DeadlineRecord, 'id' | 'title' | 'subject' | 'dueAt' | 'priority'>): void {
-    db()
-      .prepare('UPDATE deadlines SET title = ?, subject = ?, due_at = ?, priority = ? WHERE id = ?')
-      .run(d.title, d.subject, d.dueAt, d.priority, d.id);
+  async updateFields(d: Pick<DeadlineRecord, 'id' | 'title' | 'subject' | 'dueAt' | 'priority'>): Promise<void> {
+    await db().deadline.update({ where: { id: d.id }, data: { title: d.title, subject: d.subject, dueAt: d.dueAt, priority: d.priority } });
   },
 
-  setDone(id: string, userId: string, done: boolean): void {
+  async setDone(id: string, userId: string, done: boolean): Promise<void> {
     if (done) {
-      db().prepare('INSERT OR IGNORE INTO deadline_completions (deadline_id, user_id, done_at) VALUES (?, ?, ?)').run(id, userId, Date.now());
+      await db().deadlineCompletion.upsert({
+        where: { deadlineId_userId: { deadlineId: id, userId } },
+        create: { deadlineId: id, userId, doneAt: Date.now() },
+        update: {},
+      });
     } else {
-      db().prepare('DELETE FROM deadline_completions WHERE deadline_id = ? AND user_id = ?').run(id, userId);
+      await db().deadlineCompletion.deleteMany({ where: { deadlineId: id, userId } });
     }
   },
 
-  delete(id: string): void {
-    db().prepare('DELETE FROM deadlines WHERE id = ?').run(id);
+  async delete(id: string): Promise<void> {
+    await db().deadline.deleteMany({ where: { id } });
   },
 };

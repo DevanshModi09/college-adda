@@ -5,7 +5,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
 import type { ServerMessage } from '@adda/shared';
-import { openDatabase, setDb } from '../src/db/database.ts';
+import { db, disconnect } from '../src/db/database.ts';
 import { createApp } from '../src/app.ts';
 import { attachRealtime } from '../src/realtime/hub.ts';
 import { roomsService } from '../src/services/rooms.service.ts';
@@ -13,8 +13,11 @@ import { usersRepo } from '../src/repositories/users.repo.ts';
 import { CATALOG_DIR, timetableService } from '../src/services/timetable.service.ts';
 import path from 'node:path';
 
-setDb(openDatabase(':memory:'));
-roomsService.seedDefaults();
+// Fresh, empty test branch for every run (use-test-db.ts guarantees this is the test branch).
+const tables = await db().$queryRaw<{ tablename: string }[]>`
+  SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`;
+if (tables.length) await db().$executeRawUnsafe(`TRUNCATE ${tables.map((t) => `"${t.tablename}"`).join(', ')} CASCADE`);
+await roomsService.seedDefaults();
 
 const server = http.createServer(createApp());
 const wss = attachRealtime(server);
@@ -24,10 +27,11 @@ before(async () => {
   await new Promise<void>((r) => server.listen(0, r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
-after(() => {
+after(async () => {
   wss.clients.forEach((c) => c.terminate());
   wss.close();
   server.close();
+  await disconnect(); // close the pool so the test process can exit
 });
 
 async function call(cookie: string, path: string, method = 'GET', body?: unknown) {
@@ -122,7 +126,7 @@ describe('planner', () => {
     const adminCookie = await reg('boss_admin', 'A');
     const studentA = await reg('stud_a', 'A');
     const studentB = await reg('stud_b', 'B');
-    usersRepo.promoteAdmins(['boss_admin']);
+    await usersRepo.promoteAdmins(['boss_admin']);
 
     const denied = await call(studentA, '/deadlines', 'POST', { title: 'x', dueAt: Date.now() + 1e6, official: true });
     assert.equal(denied.status, 403);
@@ -183,7 +187,7 @@ describe('notice board', () => {
     const a2 = await reg('nb_a2', 'A');
     const b = await reg('nb_b', 'B');
     const admin = await reg('nb_admin', 'C');
-    usersRepo.promoteAdmins(['nb_admin']);
+    await usersRepo.promoteAdmins(['nb_admin']);
 
     const post = await call(a.cookie, '/notices', 'POST', { body: 'Lab moved to room 4' });
     assert.equal(post.status, 201);
@@ -285,7 +289,7 @@ describe('feed photos on Cloudinary', () => {
 
 describe('official timetable catalog', () => {
   it('imports every section, is public to browse, and locks official slots to admins', async () => {
-    const r = timetableService.importCatalog(path.join(CATALOG_DIR, 'cse-y2-2026-27.json'));
+    const r = await timetableService.importCatalog(path.join(CATALOG_DIR, 'cse-y2-2026-27.json'));
     assert.equal(r.sections, 36);
 
     const sections = (await call('', '/sections')).json;
@@ -297,7 +301,7 @@ describe('official timetable catalog', () => {
       (await call('', '/auth/register', 'POST', { username, password: 'password123', name: username, branch: 'CSE', year: 2, section: 'A' })).cookie;
     const student = await reg('cat_student');
     const admin = await reg('cat_admin');
-    usersRepo.promoteAdmins(['cat_admin']);
+    await usersRepo.promoteAdmins(['cat_admin']);
 
     const mine = (await call(student, '/timetable')).json;
     assert.ok(mine.length > 15, 'own section loads by default');
@@ -311,7 +315,7 @@ describe('official timetable catalog', () => {
     assert.equal((await call(admin, `/timetable/${cnLab.id}`, 'DELETE')).status, 204);
 
     // Re-import restores official slots.
-    timetableService.importCatalog(path.join(CATALOG_DIR, 'cse-y2-2026-27.json'));
+    await timetableService.importCatalog(path.join(CATALOG_DIR, 'cse-y2-2026-27.json'));
     assert.equal((await call(student, '/timetable')).json.length, mine.length);
 
     // Monday 08:30: VIB 502 hosts Sec A's CN lab, so it can't be free.
@@ -440,7 +444,7 @@ describe('friends', () => {
 
 describe('attendance', () => {
   it('marks classes from the section timetable and keeps per-subject totals', async () => {
-    timetableService.importCatalog(path.join(CATALOG_DIR, 'cse-y2-2026-27.json'));
+    await timetableService.importCatalog(path.join(CATALOG_DIR, 'cse-y2-2026-27.json'));
     const r = await call('', '/auth/register', 'POST', { username: 'att_stu', password: 'password123', name: 'Att', branch: 'CSE', year: 2, section: 'A' });
     const c = r.cookie;
     const today = new Date().toISOString().slice(0, 10);
@@ -500,7 +504,7 @@ describe('attendance', () => {
 
 describe('assignments', () => {
   it('gives every theory subject 5 private assignments and tracks their status', async () => {
-    timetableService.importCatalog(path.join(CATALOG_DIR, 'cse-y2-2026-27.json'));
+    await timetableService.importCatalog(path.join(CATALOG_DIR, 'cse-y2-2026-27.json'));
     const reg = async (username: string) =>
       (await call('', '/auth/register', 'POST', { username, password: 'password123', name: username, branch: 'CSE', year: 2, section: 'A' })).cookie;
     const a = await reg('asg_one');
@@ -550,7 +554,7 @@ describe('social', () => {
 
     const newEvent = { title: 'Hack night', startAt: Date.now() + 864e5, category: 'Hackathon' };
     assert.equal((await call(a.cookie, '/events', 'POST', newEvent)).status, 403);
-    usersRepo.promoteAdmins([a.user.username]);
+    await usersRepo.promoteAdmins([a.user.username]);
     const ev = await call(a.cookie, '/events', 'POST', newEvent);
     assert.equal(ev.json.attendees.length, 1);
     const rsvp = await call(b.cookie, `/events/${ev.json.id}/rsvp`, 'POST');

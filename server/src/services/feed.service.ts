@@ -31,8 +31,8 @@ function decodeImage(dataUrl: string): { mime: string; data: Uint8Array } {
 
 const canDelete = (viewer: UserRecord, p: PostRecord) => p.authorId === viewer.id || viewer.role === 'admin';
 
-function present(viewer: UserRecord, records: PostRecord[]): Post[] {
-  const authors = usersService.publicByIds(records.map((p) => p.authorId));
+async function present(viewer: UserRecord, records: PostRecord[]): Promise<Post[]> {
+  const authors = await usersService.publicByIds(records.map((p) => p.authorId));
   return records.map((p) => ({
     id: p.id,
     body: p.body,
@@ -45,14 +45,14 @@ function present(viewer: UserRecord, records: PostRecord[]): Post[] {
   }));
 }
 
-function find(viewer: UserRecord, id: string): PostRecord {
-  const p = postsRepo.find(viewer.id, id);
+async function find(viewer: UserRecord, id: string): Promise<PostRecord> {
+  const p = await postsRepo.find(viewer.id, id);
   if (!p) throw notFound('Post');
   return p;
 }
 
 export const feedService = {
-  list: (viewer: UserRecord, opts: { before?: number; limit: number }) => present(viewer, postsRepo.list(viewer.id, opts)),
+  list: async (viewer: UserRecord, opts: { before?: number; limit: number }) => present(viewer, await postsRepo.list(viewer.id, opts)),
 
   async create(viewer: UserRecord, input: { body: string; image?: string }): Promise<Post> {
     if (!input.body && !input.image) throw badRequest('Write something or add a photo');
@@ -69,32 +69,32 @@ export const feedService = {
         throw new HttpError(502, 'Photo upload failed, try again');
       }
     }
-    transaction(() => {
-      postsRepo.insert({ id, authorId: viewer.id, body: input.body, createdAt: Date.now(), imageUrl: hosted?.url, imagePublicId: hosted?.publicId });
-      if (image && !hosted) postsRepo.insertImage(id, image.mime, image.data);
+    await transaction(async () => {
+      await postsRepo.insert({ id, authorId: viewer.id, body: input.body, createdAt: Date.now(), imageUrl: hosted?.url, imagePublicId: hosted?.publicId });
+      if (image && !hosted) await postsRepo.insertImage(id, image.mime, image.data);
     });
     bus.emit('feed:changed');
-    return present(viewer, [find(viewer, id)])[0]!;
+    return (await present(viewer, [await find(viewer, id)]))[0]!;
   },
 
-  toggleLike(viewer: UserRecord, id: string): Post {
-    const p = find(viewer, id);
-    if (p.liked) postsRepo.unlike(id, viewer.id);
-    else postsRepo.like(id, viewer.id);
+  async toggleLike(viewer: UserRecord, id: string): Promise<Post> {
+    const p = await find(viewer, id);
+    if (p.liked) await postsRepo.unlike(id, viewer.id);
+    else await postsRepo.like(id, viewer.id);
     bus.emit('feed:changed');
-    return present(viewer, [find(viewer, id)])[0]!;
+    return (await present(viewer, [await find(viewer, id)]))[0]!;
   },
 
-  image(id: string) {
-    const img = postsRepo.image(id);
+  async image(id: string) {
+    const img = await postsRepo.image(id);
     if (!img) throw notFound('Photo');
     return img;
   },
 
-  remove(viewer: UserRecord, id: string): void {
-    const p = find(viewer, id);
+  async remove(viewer: UserRecord, id: string): Promise<void> {
+    const p = await find(viewer, id);
     if (!canDelete(viewer, p)) throw forbidden('Only the author or an admin can delete this post');
-    postsRepo.delete(id);
+    await postsRepo.delete(id);
     if (p.imagePublicId) void cloudinary.destroy(p.imagePublicId);
     bus.emit('feed:changed');
   },

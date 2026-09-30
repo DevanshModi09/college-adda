@@ -1,26 +1,29 @@
 # Render blueprint: New > Blueprint > pick this repo.
-# One web service serves the API, the websocket and the built client.
+# One web service serves the API, the websocket and the built client; data lives in Neon Postgres,
+# so the free plan is fine: restarts and deploys no longer lose anything.
 services:
   - type: web
     name: college-adda
     runtime: node
-    # Free works for the demo, but its disk is wiped on every deploy/restart: the start
-    # command re-seeds the demo data each boot, so the demo always has people and content.
-    # To keep real users' data, switch to `plan: starter` and uncomment the disk below.
     plan: free
+    # Same region as the Neon project (aws-ap-southeast-1), and the closest to Jaipur.
+    region: singapore
     buildCommand: npm ci && npm run build
-    startCommand: npm run seed -w @adda/server && npm start
+    # Apply pending migrations, add demo data only if it's missing, then start.
+    startCommand: npm run db:migrate -w @adda/server && npm run seed -w @adda/server && npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
         value: "24"
       - key: ADMIN_USERNAMES
         value: devansh
+      # From the Neon console (Connect) or `npx neon@latest connection-string`. Render asks for these
+      # when you apply the blueprint. Pooled URL for the app, direct URL for migrations.
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
       # Feed photos: cloudinary://<api_key>:<api_secret>@<cloud_name> (Cloudinary dashboard > API Keys).
-      # Render asks for the value when you apply the blueprint; leave it empty to keep photos in SQLite.
+      # Leave it empty to keep photos in Postgres.
       - key: CLOUDINARY_URL
         sync: false
-    # disk:
-    #   name: adda-data
-    #   mountPath: /opt/render/project/src/server/data
-    #   sizeGB: 1

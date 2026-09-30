@@ -11,16 +11,16 @@ declare module 'express-serve-static-core' {
   }
 }
 
-export function requireAuth(req: Request, _res: Response, next: NextFunction) {
-  const user = authService.userFromToken(req.cookies?.[SESSION_COOKIE]);
+export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
+  const user = await authService.userFromToken(req.cookies?.[SESSION_COOKIE]);
   if (!user) throw unauthorized();
   req.user = user;
   next();
 }
 
 /** Attaches the user when a valid session cookie is present; never rejects. */
-export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
-  req.user = authService.userFromToken(req.cookies?.[SESSION_COOKIE]) ?? undefined;
+export async function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  req.user = (await authService.userFromToken(req.cookies?.[SESSION_COOKIE])) ?? undefined;
   next();
 }
 

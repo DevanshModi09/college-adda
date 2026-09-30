@@ -23,18 +23,18 @@ export const authController = {
     res.status(201).json({ user: session.user });
   },
 
-  logout(req: Request, res: Response) {
+  async logout(req: Request, res: Response) {
     const token = req.cookies?.[SESSION_COOKIE];
-    if (token) authService.logout(token);
+    if (token) await authService.logout(token);
     clearSessionCookie(res);
     res.status(204).end();
   },
 
-  me(req: Request, res: Response) {
+  async me(req: Request, res: Response) {
     res.json({ user: toPublicUser(currentUser(req)) });
   },
 
-  updateMe(req: Request, res: Response) {
-    res.json({ user: usersService.updateProfile(currentUser(req).id, profileSchema.parse(req.body)) });
+  async updateMe(req: Request, res: Response) {
+    res.json({ user: await usersService.updateProfile(currentUser(req).id, profileSchema.parse(req.body)) });
   },
 };

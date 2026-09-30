@@ -1,4 +1,6 @@
 import { db } from '../db/database.ts';
+import { msOrNull, ms } from '../db/convert.ts';
+import type { Friendship } from '../generated/prisma/client.ts';
 
 export interface FriendshipRow {
   requester_id: string;
@@ -8,37 +10,46 @@ export interface FriendshipRow {
   responded_at: number | null;
 }
 
+const toRow = (f: Friendship): FriendshipRow => ({
+  requester_id: f.requesterId,
+  addressee_id: f.addresseeId,
+  status: f.status as FriendshipRow['status'],
+  created_at: ms(f.createdAt),
+  responded_at: msOrNull(f.respondedAt),
+});
+
+const pair = (a: string, b: string) => ({
+  OR: [
+    { requesterId: a, addresseeId: b },
+    { requesterId: b, addresseeId: a },
+  ],
+});
+
 export const friendsRepo = {
   /** The row between two users, whichever of them sent the request. */
-  between(a: string, b: string): FriendshipRow | null {
-    return (
-      (db()
-        .prepare('SELECT * FROM friendships WHERE (requester_id = ? AND addressee_id = ?) OR (requester_id = ? AND addressee_id = ?)')
-        .get(a, b, b, a) as FriendshipRow | undefined) ?? null
-    );
+  async between(a: string, b: string): Promise<FriendshipRow | null> {
+    const f = await db().friendship.findFirst({ where: pair(a, b) });
+    return f ? toRow(f) : null;
   },
 
-  /** Every row touching the user. */
-  forUser(userId: string): FriendshipRow[] {
-    return db()
-      .prepare('SELECT * FROM friendships WHERE requester_id = ? OR addressee_id = ? ORDER BY COALESCE(responded_at, created_at) DESC')
-      .all(userId, userId) as unknown as FriendshipRow[];
+  /** Every row touching the user, most recent activity first. */
+  async forUser(userId: string): Promise<FriendshipRow[]> {
+    const rows = await db().friendship.findMany({ where: { OR: [{ requesterId: userId }, { addresseeId: userId }] } });
+    return rows.map(toRow).sort((x, y) => (y.responded_at ?? y.created_at) - (x.responded_at ?? x.created_at));
   },
 
-  request(from: string, to: string): void {
-    db().prepare("INSERT INTO friendships (requester_id, addressee_id, status, created_at) VALUES (?, ?, 'pending', ?)").run(from, to, Date.now());
+  async request(from: string, to: string): Promise<void> {
+    await db().friendship.create({ data: { requesterId: from, addresseeId: to, status: 'pending', createdAt: Date.now() } });
   },
 
-  accept(requester: string, addressee: string): void {
-    db()
-      .prepare("UPDATE friendships SET status = 'accepted', responded_at = ? WHERE requester_id = ? AND addressee_id = ?")
-      .run(Date.now(), requester, addressee);
+  async accept(requester: string, addressee: string): Promise<void> {
+    await db().friendship.updateMany({
+      where: { requesterId: requester, addresseeId: addressee },
+      data: { status: 'accepted', respondedAt: Date.now() },
+    });
   },
 
-  remove(a: string, b: string): boolean {
-    const r = db()
-      .prepare('DELETE FROM friendships WHERE (requester_id = ? AND addressee_id = ?) OR (requester_id = ? AND addressee_id = ?)')
-      .run(a, b, b, a);
-    return r.changes > 0;
+  async remove(a: string, b: string): Promise<boolean> {
+    return (await db().friendship.deleteMany({ where: pair(a, b) })).count > 0;
   },
 };

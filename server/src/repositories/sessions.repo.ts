@@ -1,24 +1,20 @@
 import { db } from '../db/database.ts';
 
 export const sessionsRepo = {
-  create(tokenHash: string, userId: string, expiresAt: number): void {
-    db()
-      .prepare('INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)')
-      .run(tokenHash, userId, Date.now(), expiresAt);
+  async create(tokenHash: string, userId: string, expiresAt: number): Promise<void> {
+    await db().session.create({ data: { tokenHash, userId, createdAt: Date.now(), expiresAt } });
   },
 
-  findUserId(tokenHash: string): string | null {
-    const row = db()
-      .prepare('SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > ?')
-      .get(tokenHash, Date.now()) as { user_id: string } | undefined;
-    return row?.user_id ?? null;
+  async findUserId(tokenHash: string): Promise<string | null> {
+    const s = await db().session.findFirst({ where: { tokenHash, expiresAt: { gt: Date.now() } }, select: { userId: true } });
+    return s?.userId ?? null;
   },
 
-  delete(tokenHash: string): void {
-    db().prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash);
+  async delete(tokenHash: string): Promise<void> {
+    await db().session.deleteMany({ where: { tokenHash } });
   },
 
-  deleteExpired(): void {
-    db().prepare('DELETE FROM sessions WHERE expires_at <= ?').run(Date.now());
+  async deleteExpired(): Promise<void> {
+    await db().session.deleteMany({ where: { expiresAt: { lte: Date.now() } } });
   },
 };

@@ -34,14 +34,14 @@ interface CatalogFile {
 
 export const timetableService = {
   /** Anyone can read any section's timetable. Defaults to the viewer's own section. */
-  list(viewer: UserRecord, sectionKey?: string): ClassSlot[] {
+  async list(viewer: UserRecord, sectionKey?: string): Promise<ClassSlot[]> {
     const key = sectionKey || sectionKeyOf(viewer);
     if (!parseSectionKey(key)) throw badRequest('Unknown section');
-    return timetableRepo.listBySection(key).map(strip);
+    return (await timetableRepo.listBySection(key)).map(strip);
   },
 
-  sections(viewer?: UserRecord): Section[] {
-    const rows = timetableRepo.sections();
+  async sections(viewer?: UserRecord): Promise<Section[]> {
+    const rows = await timetableRepo.sections();
     if (viewer?.branch && !rows.some((r) => r.key === sectionKeyOf(viewer))) {
       rows.push({ key: sectionKeyOf(viewer), label: '', members: 1, slots: 0 });
     }
@@ -54,59 +54,69 @@ export const timetableService = {
   },
 
   /** Rooms nobody is using at this moment, across every section's timetable. */
-  freeRooms(day: number, time: string): FreeRooms {
-    const all = timetableRepo.allRooms();
-    const busy = new Set(timetableRepo.busyRooms(day, time));
-    return { period: timetableRepo.periodAt(day, time), free: all.filter((r) => !busy.has(r)), busy: busy.size, total: all.length };
+  async freeRooms(day: number, time: string): Promise<FreeRooms> {
+    const [all, busyList, period] = await Promise.all([timetableRepo.allRooms(), timetableRepo.busyRooms(day, time), timetableRepo.periodAt(day, time)]);
+    const busy = new Set(busyList);
+    return { period, free: all.filter((r) => !busy.has(r)), busy: busy.size, total: all.length };
   },
 
   /** Students add extra slots to their own section; admins can add to any section. */
-  create(user: UserRecord, input: ClassCreate): ClassSlot {
+  async create(user: UserRecord, input: ClassCreate): Promise<ClassSlot> {
     const { section, ...fields } = input;
     const target = user.role === 'admin' && section ? section : sectionKeyOf(user);
     if (!user.branch) throw badRequest('Set your branch on your profile first');
     if (!parseSectionKey(target)) throw badRequest('Unknown section');
     const slot = { id: newId(), sectionKey: target, ...fields };
-    timetableRepo.insert(slot, user.id);
+    await timetableRepo.insert(slot, user.id);
     return { ...slot, official: false };
   },
 
   /** Official (imported) slots: admins only. Student-added slots: that section's members or admins. */
-  remove(user: UserRecord, id: string): void {
-    const slot = timetableRepo.find(id);
+  async remove(user: UserRecord, id: string): Promise<void> {
+    const slot = await timetableRepo.find(id);
     if (!slot) throw notFound('Class');
     const isAdmin = user.role === 'admin';
     if (slot.official && !isAdmin) throw forbidden('The official timetable can only be changed by an admin');
     if (!slot.official && !isAdmin && slot.sectionKey !== sectionKeyOf(user)) {
       throw forbidden("You can only edit your own section's timetable");
     }
-    timetableRepo.delete(id);
+    await timetableRepo.delete(id);
   },
 
   /** Replaces the official slots of every section in the file (student-added slots are kept). */
-  importCatalog(file: string): { sections: number; slots: number } {
+  async importCatalog(file: string): Promise<{ sections: number; slots: number }> {
     const cat = JSON.parse(fs.readFileSync(file, 'utf8')) as CatalogFile;
     let slots = 0;
-    transaction(() => {
+    await transaction(async () => {
       for (const s of cat.sections) {
         if (!parseSectionKey(s.key)) throw new Error(`bad section key ${s.key} in ${file}`);
-        timetableRepo.upsertSection({ key: s.key, branch: cat.branch, year: cat.year, code: s.code, label: s.label, term: cat.term, source: cat.source });
-        timetableRepo.deleteOfficial(s.key);
-        for (const slot of s.slots) {
-          const kind = (['Lecture', 'Lab', 'Tutorial'].includes(slot.kind) ? slot.kind : 'Lecture') as ClassKind;
-          timetableRepo.insert({ id: newId(), sectionKey: s.key, day: slot.day, start: slot.start, end: slot.end, subject: slot.subject, kind, room: slot.room, teacher: slot.teacher }, null);
-          slots++;
-        }
+        await timetableRepo.upsertSection({ key: s.key, branch: cat.branch, year: cat.year, code: s.code, label: s.label, term: cat.term, source: cat.source });
+        await timetableRepo.deleteOfficial(s.key);
+        // One statement per section: hundreds of single inserts would be slow over the network.
+        await timetableRepo.insertMany(
+          s.slots.map((slot) => ({
+            id: newId(),
+            sectionKey: s.key,
+            day: slot.day,
+            start: slot.start,
+            end: slot.end,
+            subject: slot.subject,
+            kind: (['Lecture', 'Lab', 'Tutorial'].includes(slot.kind) ? slot.kind : 'Lecture') as ClassKind,
+            room: slot.room,
+            teacher: slot.teacher,
+          }))
+        );
+        slots += s.slots.length;
       }
-    });
+    }, 60_000); // three round trips per section: far past the default 5 s on a big catalog
     return { sections: cat.sections.length, slots };
   },
 
   /** On first boot, load every catalog file so a fresh deploy has real timetables. */
-  importCatalogIfEmpty(): void {
-    if (timetableRepo.catalogCount() || !fs.existsSync(CATALOG_DIR)) return;
+  async importCatalogIfEmpty(): Promise<void> {
+    if ((await timetableRepo.catalogCount()) || !fs.existsSync(CATALOG_DIR)) return;
     for (const f of fs.readdirSync(CATALOG_DIR).filter((f) => f.endsWith('.json'))) {
-      const r = this.importCatalog(path.join(CATALOG_DIR, f));
+      const r = await this.importCatalog(path.join(CATALOG_DIR, f));
       logger.info(`imported timetable catalog ${f}`, r);
     }
   },

@@ -7,7 +7,8 @@ export const env = {
   nodeEnv,
   isProd: nodeEnv === 'production',
   port: Number(process.env.PORT ?? 3000),
-  dbFile: process.env.DB_FILE ?? path.join(root, 'server/data/adda.db'),
+  /** Neon pooled connection string (the app); migrations use DATABASE_URL_UNPOOLED. */
+  databaseUrl: process.env.DATABASE_URL ?? '',
   clientDist: path.join(root, 'client/dist'),
   sessionDays: Number(process.env.SESSION_DAYS ?? 30),
   /** Comma-separated usernames promoted to admin on boot. */

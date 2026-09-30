@@ -1,4 +1,5 @@
 import { db } from '../db/database.ts';
+import { ms } from '../db/convert.ts';
 
 export interface PostRecord {
   id: string;
@@ -7,83 +8,84 @@ export interface PostRecord {
   createdAt: number;
   likes: number;
   liked: boolean;
-  /** Photo stored in SQLite (post_images). */
+  /** Photo stored in the database (post_images). */
   hasImage: boolean;
   /** Photo hosted on Cloudinary. */
   imageUrl: string | null;
   imagePublicId: string | null;
 }
 
-interface Row {
-  id: string;
-  author_id: string;
-  body: string;
-  created_at: number;
-  likes: number;
-  liked: number;
-  has_image: number;
-  image_url: string | null;
-  image_public_id: string | null;
-}
-
-const toRecord = (r: Row): PostRecord => ({
-  id: r.id,
-  authorId: r.author_id,
-  body: r.body,
-  createdAt: r.created_at,
-  likes: r.likes,
-  liked: r.liked === 1,
-  hasImage: r.has_image === 1,
-  imageUrl: r.image_url,
-  imagePublicId: r.image_public_id,
+// Like count, "did the viewer like it" and "has a stored photo" come back with each post, never the photo bytes.
+const withExtras = (viewerId: string) => ({
+  _count: { select: { likes: true } },
+  likes: { where: { userId: viewerId }, select: { userId: true } },
+  image: { select: { postId: true } },
 });
 
-// Like count and "did the viewer like it" come back with each post in one query.
-const SELECT = `
-  SELECT p.*,
-    (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS likes,
-    EXISTS (SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.user_id = ?) AS liked,
-    EXISTS (SELECT 1 FROM post_images i WHERE i.post_id = p.id) AS has_image
-  FROM posts p`;
+type Row = {
+  id: string;
+  authorId: string;
+  body: string;
+  createdAt: bigint;
+  imageUrl: string | null;
+  imagePublicId: string | null;
+  _count: { likes: number };
+  likes: unknown[];
+  image: unknown | null;
+};
+
+const toRecord = (p: Row): PostRecord => ({
+  id: p.id,
+  authorId: p.authorId,
+  body: p.body,
+  createdAt: ms(p.createdAt),
+  likes: p._count.likes,
+  liked: p.likes.length > 0,
+  hasImage: p.image !== null,
+  imageUrl: p.imageUrl,
+  imagePublicId: p.imagePublicId,
+});
 
 export const postsRepo = {
   /** Newest first; `before` pages further back. */
-  list(viewerId: string, opts: { before?: number; limit: number }): PostRecord[] {
-    const rows = db()
-      .prepare(`${SELECT} WHERE p.created_at < ? ORDER BY p.created_at DESC LIMIT ?`)
-      .all(viewerId, opts.before ?? Number.MAX_SAFE_INTEGER, opts.limit) as unknown as Row[];
+  async list(viewerId: string, opts: { before?: number; limit: number }): Promise<PostRecord[]> {
+    const rows = await db().post.findMany({
+      where: opts.before ? { createdAt: { lt: opts.before } } : {},
+      include: withExtras(viewerId),
+      orderBy: { createdAt: 'desc' },
+      take: opts.limit,
+    });
     return rows.map(toRecord);
   },
 
-  find(viewerId: string, id: string): PostRecord | null {
-    const row = db().prepare(`${SELECT} WHERE p.id = ?`).get(viewerId, id) as Row | undefined;
-    return row ? toRecord(row) : null;
+  async find(viewerId: string, id: string): Promise<PostRecord | null> {
+    const p = await db().post.findUnique({ where: { id }, include: withExtras(viewerId) });
+    return p ? toRecord(p) : null;
   },
 
-  insert(p: { id: string; authorId: string; body: string; createdAt: number; imageUrl?: string; imagePublicId?: string }): void {
-    db()
-      .prepare('INSERT INTO posts (id, author_id, body, created_at, image_url, image_public_id) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(p.id, p.authorId, p.body, p.createdAt, p.imageUrl ?? null, p.imagePublicId ?? null);
+  async insert(p: { id: string; authorId: string; body: string; createdAt: number; imageUrl?: string; imagePublicId?: string }): Promise<void> {
+    await db().post.create({
+      data: { id: p.id, authorId: p.authorId, body: p.body, createdAt: p.createdAt, imageUrl: p.imageUrl ?? null, imagePublicId: p.imagePublicId ?? null },
+    });
   },
 
-  insertImage(postId: string, mime: string, data: Uint8Array): void {
-    db().prepare('INSERT INTO post_images (post_id, mime, data) VALUES (?, ?, ?)').run(postId, mime, data);
+  async insertImage(postId: string, mime: string, data: Uint8Array): Promise<void> {
+    await db().postImage.create({ data: { postId, mime, data: new Uint8Array(data) } });
   },
 
-  image(postId: string): { mime: string; data: Uint8Array } | null {
-    const row = db().prepare('SELECT mime, data FROM post_images WHERE post_id = ?').get(postId) as { mime: string; data: Uint8Array } | undefined;
-    return row ?? null;
+  async image(postId: string): Promise<{ mime: string; data: Uint8Array } | null> {
+    return db().postImage.findUnique({ where: { postId }, select: { mime: true, data: true } });
   },
 
-  delete(id: string): void {
-    db().prepare('DELETE FROM posts WHERE id = ?').run(id);
+  async delete(id: string): Promise<void> {
+    await db().post.deleteMany({ where: { id } });
   },
 
-  like(postId: string, userId: string): void {
-    db().prepare('INSERT OR IGNORE INTO post_likes (post_id, user_id) VALUES (?, ?)').run(postId, userId);
+  async like(postId: string, userId: string): Promise<void> {
+    await db().postLike.upsert({ where: { postId_userId: { postId, userId } }, create: { postId, userId }, update: {} });
   },
 
-  unlike(postId: string, userId: string): void {
-    db().prepare('DELETE FROM post_likes WHERE post_id = ? AND user_id = ?').run(postId, userId);
+  async unlike(postId: string, userId: string): Promise<void> {
+    await db().postLike.deleteMany({ where: { postId, userId } });
   },
 };

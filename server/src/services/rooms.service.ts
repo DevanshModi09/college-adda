@@ -16,51 +16,52 @@ const SEED_ROOMS: Pick<Room, 'name' | 'topic' | 'lang'>[] = [
 ];
 
 export const roomsService = {
-  seedDefaults(): void {
-    if (roomsRepo.count()) return;
-    for (const r of SEED_ROOMS) roomsRepo.insert({ id: newId(), ...r, createdBy: null, createdAt: Date.now() });
+  async seedDefaults(): Promise<void> {
+    if (await roomsRepo.count()) return;
+    for (const r of SEED_ROOMS) await roomsRepo.insert({ id: newId(), ...r, createdBy: null, createdAt: Date.now() });
   },
 
-  get(id: string): Room {
-    const room = roomsRepo.find(id);
+  async get(id: string): Promise<Room> {
+    const room = await roomsRepo.find(id);
     if (!room) throw notFound('Desk');
     return room;
   },
 
-  members(roomId: string): RoomMember[] {
+  async members(roomId: string): Promise<RoomMember[]> {
     const seats = presence.seats(roomId);
-    const users = usersService.publicByIds(seats.map((s) => s.userId));
+    const users = await usersService.publicByIds(seats.map((s) => s.userId));
     return seats.flatMap((s) => {
       const u = users.get(s.userId);
       return u ? [{ ...u, status: s.status, joinedAt: s.joinedAt }] : [];
     });
   },
 
-  listWithMembers(): RoomWithMembers[] {
-    return roomsRepo.list().map((r) => ({ ...r, members: this.members(r.id) }));
+  async listWithMembers(): Promise<RoomWithMembers[]> {
+    const rooms = await roomsRepo.list();
+    return Promise.all(rooms.map(async (r) => ({ ...r, members: await this.members(r.id) })));
   },
 
-  create(userId: string, input: RoomCreate): Room {
+  async create(userId: string, input: RoomCreate): Promise<Room> {
     const room: Room = { id: newId(), ...input, createdBy: userId, createdAt: Date.now() };
-    roomsRepo.insert(room);
+    await roomsRepo.insert(room);
     bus.emit('rooms:changed');
     return room;
   },
 
-  remove(userId: string, id: string): void {
-    const room = this.get(id);
+  async remove(userId: string, id: string): Promise<void> {
+    const room = await this.get(id);
     if (room.createdBy !== userId) throw forbidden('Only the creator can delete this desk');
     if (!presence.isEmpty(id)) throw badRequest('Someone is still sitting at this desk');
-    roomsRepo.delete(id);
+    await roomsRepo.delete(id);
     bus.emit('rooms:changed');
   },
 
   history: (roomId: string) => roomsRepo.recentMessages(roomId, HISTORY),
 
-  postMessage(roomId: string, userId: string, text: string): RoomMessage {
-    const user = usersService.get(userId);
+  async postMessage(roomId: string, userId: string, text: string): Promise<RoomMessage> {
+    const user = await usersService.get(userId);
     const message: RoomMessage = { id: newId(), roomId, userId, name: user.name, color: user.color, text, createdAt: Date.now() };
-    roomsRepo.insertMessage(message);
+    await roomsRepo.insertMessage(message);
     return message;
   },
 };

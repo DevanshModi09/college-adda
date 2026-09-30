@@ -1,46 +1,36 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../generated/prisma/client.ts';
 import { env } from '../config/env.ts';
-import { migrations } from './migrations.ts';
 
-export type Db = DatabaseSync;
+// One Prisma client for the process, talking to Neon over its pooled connection.
+// Schema changes are Prisma migrations (prisma/migrations), applied with `npm run db:migrate`.
 
-export function openDatabase(file: string = env.dbFile): Db {
-  if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
-  const db = new DatabaseSync(file);
-  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
-  migrate(db);
-  return db;
+export type Db = PrismaClient;
+type Tx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
+
+let client: PrismaClient | null = null;
+const txScope = new AsyncLocalStorage<Tx>();
+
+function connect(): PrismaClient {
+  if (!env.databaseUrl) throw new Error('DATABASE_URL is not set. Run `npx neon@latest env pull` or copy server/.env.example.');
+  return new PrismaClient({ adapter: new PrismaPg({ connectionString: env.databaseUrl }) });
 }
 
-function migrate(db: Db) {
-  const { user_version: current } = db.prepare('PRAGMA user_version').get() as { user_version: number };
-  migrations.slice(current).forEach((sql, i) => {
-    db.exec('BEGIN');
-    try {
-      db.exec(sql);
-      db.exec(`PRAGMA user_version = ${current + i + 1}`);
-      db.exec('COMMIT');
-    } catch (err) {
-      db.exec('ROLLBACK');
-      throw err;
-    }
-  });
+/** The client to query with: the open transaction if we're inside one, else the shared client. */
+export const db = (): Tx | PrismaClient => txScope.getStore() ?? (client ??= connect());
+
+/**
+ * Runs `fn` in a transaction; every repository call inside it (awaited) joins automatically.
+ * `timeoutMs` overrides Prisma's 5 s limit for bulk jobs, where every query is a network round trip to Neon.
+ */
+export async function transaction<T>(fn: () => Promise<T>, timeoutMs?: number): Promise<T> {
+  if (txScope.getStore()) return fn(); // already inside one
+  client ??= connect();
+  return client.$transaction((tx) => txScope.run(tx, fn), timeoutMs ? { timeout: timeoutMs, maxWait: timeoutMs } : undefined);
 }
 
-let instance: Db | null = null;
-export const db = (): Db => (instance ??= openDatabase());
-export const setDb = (next: Db) => void (instance = next);
-
-export function transaction<T>(fn: () => T): T {
-  db().exec('BEGIN');
-  try {
-    const out = fn();
-    db().exec('COMMIT');
-    return out;
-  } catch (err) {
-    db().exec('ROLLBACK');
-    throw err;
-  }
+export async function disconnect(): Promise<void> {
+  await client?.$disconnect();
+  client = null;
 }

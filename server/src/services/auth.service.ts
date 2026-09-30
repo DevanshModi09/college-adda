@@ -26,16 +26,16 @@ export interface Session {
   user: PublicUser;
 }
 
-function startSession(user: UserRecord, lifetimeMs = env.sessionDays * 864e5): Session {
+async function startSession(user: UserRecord, lifetimeMs = env.sessionDays * 864e5): Promise<Session> {
   const token = crypto.randomBytes(32).toString('base64url');
   const expiresAt = Date.now() + lifetimeMs;
-  sessionsRepo.create(sha256(token), user.id, expiresAt);
+  await sessionsRepo.create(sha256(token), user.id, expiresAt);
   return { token, expiresAt, user: toPublicUser(user) };
 }
 
 export const authService = {
   async register(input: RegisterInput): Promise<Session> {
-    if (usersRepo.findByUsername(input.username)) throw conflict('That username is taken');
+    if (await usersRepo.findByUsername(input.username)) throw conflict('That username is taken');
     const user: UserRecord = {
       id: newId(),
       username: input.username,
@@ -51,12 +51,12 @@ export const authService = {
       guest: false,
       createdAt: Date.now(),
     };
-    usersRepo.insert(user);
+    await usersRepo.insert(user);
     return startSession(user);
   },
 
   async login(input: LoginInput): Promise<Session> {
-    const user = usersRepo.findByUsername(input.username);
+    const user = await usersRepo.findByUsername(input.username);
     const ok = await bcrypt.compare(input.password, user?.passwordHash ?? DUMMY_HASH);
     if (!user || !ok) throw unauthorized('Wrong username or password');
     return startSession(user);
@@ -81,14 +81,14 @@ export const authService = {
       guest: true,
       createdAt: Date.now(),
     };
-    usersRepo.insert(user);
+    await usersRepo.insert(user);
 
     // Give the guest someone to talk to: the first configured admin befriends and greets them.
-    const host = env.adminUsernames.map((u) => usersRepo.findByUsername(u)).find(Boolean);
+    const host = (await Promise.all(env.adminUsernames.map((u) => usersRepo.findByUsername(u)))).find(Boolean);
     if (host) {
-      friendsRepo.request(host.id, user.id);
-      friendsRepo.accept(host.id, user.id);
-      messagesService.send(host.id, user.id, `hey ${user.name.split(' ')[0]}! welcome to College Adda 👋 try the campus map, check the notice board, and mark today's attendance.`);
+      await friendsRepo.request(host.id, user.id);
+      await friendsRepo.accept(host.id, user.id);
+      await messagesService.send(host.id, user.id, `hey ${user.name.split(' ')[0]}! welcome to College Adda 👋 try the campus map, check the notice board, and mark today's attendance.`);
     }
     return startSession(user, GUEST.lifetimeMs);
   },
@@ -96,13 +96,13 @@ export const authService = {
   /** Guest accounts expire with their session; clear them out along with everything they made. */
   deleteStaleGuests: () => usersRepo.deleteGuestsBefore(Date.now() - GUEST.lifetimeMs),
 
-  logout(token: string): void {
-    sessionsRepo.delete(sha256(token));
+  async logout(token: string): Promise<void> {
+    await sessionsRepo.delete(sha256(token));
   },
 
-  userFromToken(token: string | undefined): UserRecord | null {
+  async userFromToken(token: string | undefined): Promise<UserRecord | null> {
     if (!token) return null;
-    const userId = sessionsRepo.findUserId(sha256(token));
+    const userId = await sessionsRepo.findUserId(sha256(token));
     return userId ? usersRepo.findById(userId) : null;
   },
 };
