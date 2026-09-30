@@ -11,3 +11,5 @@ if (process.env.DATABASE_URL && process.env.DATABASE_URL === url) {
 }
 process.env.DATABASE_URL = url;
 process.env.NODE_ENV = 'test';
+// Never upload to the real Cloudinary account from tests; the Cloudinary test fakes it itself.
+delete process.env.CLOUDINARY_URL;
