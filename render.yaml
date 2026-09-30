@@ -1,0 +1,22 @@
+# Render blueprint: New > Blueprint > pick this repo.
+# One web service serves the API, the websocket and the built client.
+services:
+  - type: web
+    name: college-adda
+    runtime: node
+    # Free works for the demo, but its disk is wiped on every deploy/restart: the start
+    # command re-seeds the demo data each boot, so the demo always has people and content.
+    # To keep real users' data, switch to `plan: starter` and uncomment the disk below.
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run seed -w @adda/server && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: ADMIN_USERNAMES
+        value: devansh
+    # disk:
+    #   name: adda-data
+    #   mountPath: /opt/render/project/src/server/data
+    #   sizeGB: 1
