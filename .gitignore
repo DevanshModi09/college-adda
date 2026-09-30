@@ -1,15 +1,28 @@
-.vercel
+# dependencies
+node_modules/
+
+# build output
+dist/
+server/src/generated/
+
+# env files
 .env*
 !.env.example
-node_modules
-dist
+
+# local database files
 server/data/
 *.db
 *.db-wal
 *.db-shm
-.DS_Store
 
-# Prisma client is generated on install (server/package.json postinstall)
-server/src/generated/
-# Neon CLI workspace link
-.neon
+# logs
+*.log
+npm-debug.log*
+
+# deployment CLIs
+.vercel/
+.neon/
+
+# os / editor
+.DS_Store
+.idea/
