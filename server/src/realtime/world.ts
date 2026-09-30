@@ -1,4 +1,4 @@
-import { WORLD_SIZE, type Facing, type Plate, type WorldPlayer } from '@adda/shared';
+import { PLATE_TTL_MS, WORLD_SIZE, type Facing, type Plate, type WorldPlayer } from '@adda/shared';
 
 // The 2D campus: one shared, in-memory world. Positions are in tiles.
 // The client handles collisions against the map; the server keeps players honest
@@ -18,10 +18,13 @@ const players = new Map<string, Entry>();
 
 // Café tables: what's been ordered to each one. The map (and so which tables exist)
 // lives on the client; the server just keeps a few recent plates per table id.
-const PLATE_TTL = 10 * 60e3;
+// A diner's plates are cleared as soon as they walk away from where they ordered.
 const MAX_PLATES = 6;
+const LEFT_TABLE = 1.5; // tiles from where you ordered
 const plates = new Map<string, Plate[]>();
-const fresh = (list: Plate[], now: number) => list.filter((p) => now - p.at < PLATE_TTL);
+/** Who has food out, at which table, and where they were sitting when it came. */
+const diners = new Map<string, { tableId: string; x: number; y: number }>();
+const fresh = (list: Plate[], now: number) => list.filter((p) => now - p.at < PLATE_TTL_MS);
 
 const view = ({ connections: _c, lastMoveAt: _l, ...p }: Entry): WorldPlayer => p;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -88,7 +91,25 @@ export const world = {
   serve(tableId: string, plate: Plate): Plate[] {
     const list = [...fresh(plates.get(tableId) ?? [], plate.at), plate].slice(-MAX_PLATES);
     plates.set(tableId, list);
+    const p = players.get(plate.userId);
+    if (p) diners.set(plate.userId, { tableId, x: p.x, y: p.y });
     return list;
+  },
+
+  /**
+   * Clears the user's plates if they've walked away from their table (or `force`, when they
+   * leave the campus). Returns the table's new plates so everyone can be told, or null.
+   */
+  clearTable(userId: string, force = false): { tableId: string; plates: Plate[] } | null {
+    const seat = diners.get(userId);
+    if (!seat) return null;
+    const p = players.get(userId);
+    if (!force && p && Math.hypot(p.x - seat.x, p.y - seat.y) <= LEFT_TABLE) return null;
+    diners.delete(userId);
+    const list = (plates.get(seat.tableId) ?? []).filter((pl) => pl.userId !== userId);
+    if (list.length) plates.set(seat.tableId, list);
+    else plates.delete(seat.tableId);
+    return { tableId: seat.tableId, plates: list };
   },
 
   /** Everything still on the tables, for players joining the world. */
@@ -106,5 +127,6 @@ export const world = {
   reset: () => {
     players.clear();
     plates.clear();
+    diners.clear();
   },
 };

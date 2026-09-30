@@ -10,6 +10,7 @@ import { createApp } from '../src/app.ts';
 import { attachRealtime } from '../src/realtime/hub.ts';
 import { roomsService } from '../src/services/rooms.service.ts';
 import { usersRepo } from '../src/repositories/users.repo.ts';
+import { SPAWN, world } from '../src/realtime/world.ts';
 import { CATALOG_DIR, timetableService } from '../src/services/timetable.service.ts';
 import path from 'node:path';
 
@@ -242,6 +243,27 @@ describe('feed', () => {
     assert.deepEqual(feed.slice(0, 2).map((p: { id: string }) => p.id), [photo.json.id, text.json.id]);
     assert.equal((await call(b.cookie, `/feed/${text.json.id}`, 'DELETE')).status, 403);
     assert.equal((await call(a.cookie, `/feed/${text.json.id}`, 'DELETE')).status, 204);
+  });
+});
+
+describe('café plates', () => {
+  it('clears a diner’s plates when they walk away or leave campus, keeping everyone else’s', () => {
+    const t = Date.now() + 10_000; // clear of any earlier moves
+    world.join({ id: 'plate-ana', name: 'Ana', color: '#fff' }, 'c1');
+    world.join({ id: 'plate-bo', name: 'Bo', color: '#fff' }, 'c2');
+    world.serve('t-plates', { item: '🍜', userId: 'plate-ana', name: 'Ana', at: t });
+    world.serve('t-plates', { item: '☕', userId: 'plate-bo', name: 'Bo', at: t });
+
+    assert.equal(world.clearTable('plate-ana'), null, 'still sitting there');
+    world.move('plate-ana', { x: SPAWN.x + 1, y: SPAWN.y, dir: 'right', moving: true }, t + 1000);
+    assert.equal(world.clearTable('plate-ana'), null, 'a small shuffle keeps the food');
+    world.move('plate-ana', { x: SPAWN.x + 4, y: SPAWN.y, dir: 'right', moving: true }, t + 2000);
+    assert.deepEqual(world.clearTable('plate-ana')?.plates.map((p) => p.item), ['☕'], 'walked off: only their plate goes');
+    assert.equal(world.clearTable('plate-ana'), null, 'nothing left to clear');
+
+    world.leave('plate-bo', 'c2');
+    assert.deepEqual(world.clearTable('plate-bo', true), { tableId: 't-plates', plates: [] }, 'leaving campus clears it too');
+    world.leave('plate-ana', 'c1');
   });
 });
 

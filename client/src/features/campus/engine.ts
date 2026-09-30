@@ -1,4 +1,4 @@
-import type { Facing, Plate, ServerMessage, WorldPlayer } from '@adda/shared';
+import { PLATE_TTL_MS, type Facing, type Plate, type ServerMessage, type WorldPlayer } from '@adda/shared';
 import { realtime } from '../../lib/realtime';
 import { canStand, findPath, H, standOn, TILE, W, type CampusMap, type DiningTable, type Zone } from './map';
 import { drawAvatar, drawBubble, drawLabel } from './render';
@@ -6,7 +6,6 @@ import { drawAvatar, drawBubble, drawLabel } from './render';
 const SPEED = 5; // tiles per second
 const SEND_EVERY = 90; // ms between position updates
 const BUBBLE_MS = 6000;
-const PLATE_MS = 10 * 60e3; // matches the server
 // Where plates go on a one-tile table (px within the tile), in serving order.
 const PLATE_SPOTS = [[4, 7], [12, 7], [8, 11], [8, 4]] as const;
 
@@ -392,7 +391,7 @@ export class CampusEngine {
     ctx.textBaseline = 'middle';
     for (const t of this.map.tables) {
       const list = (this.plates.get(t.id) ?? [])
-        .filter((p) => now - p.at < PLATE_MS && !this.inTransit.has(plateKey(t.id, p)))
+        .filter((p) => now - p.at < PLATE_TTL_MS && !this.inTransit.has(plateKey(t.id, p)))
         .slice(-PLATE_SPOTS.length);
       list.forEach((p, i) => {
         const [dx, dy] = PLATE_SPOTS[i]!;

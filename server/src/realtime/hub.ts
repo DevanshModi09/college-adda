@@ -115,7 +115,10 @@ export function attachRealtime(server: Server) {
   function leaveWorld(c: Client) {
     if (!c.inWorld) return;
     c.inWorld = false;
-    if (world.leave(c.userId, c.id)) toWorld({ type: 'world:left', userId: c.userId });
+    if (!world.leave(c.userId, c.id)) return;
+    toWorld({ type: 'world:left', userId: c.userId });
+    const cleared = world.clearTable(c.userId, true); // their food goes when they leave campus
+    if (cleared) toWorld({ type: 'world:plates', ...cleared });
   }
 
   const pushRooms = async () => broadcast({ type: 'rooms:live', rooms: await roomsService.listWithMembers() });
@@ -181,6 +184,8 @@ export function attachRealtime(server: Server) {
         const player = world.move(c.userId, msg);
         // Everyone (the mover too: if the server rejected the step, their client snaps back).
         if (player) toWorld({ type: 'world:player', player });
+        const cleared = world.clearTable(c.userId);
+        if (cleared) toWorld({ type: 'world:plates', ...cleared });
         return;
       }
 
