@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Navigate, Route, Routes, useParams } from 'react-router';
+import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router';
 import type { PublicUser } from '@adda/shared';
 import { useMe } from './hooks/queries';
 import { api } from './lib/api';
@@ -30,6 +30,7 @@ function LegacyRoomRedirect() {
 
 export function App() {
   const { data: user, isPending } = useMe();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!user) return;
@@ -38,13 +39,21 @@ export function App() {
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isPending) return <Loading label="INSERT COIN" />;
-  if (!user) return <AuthPage onAuthed={(u: PublicUser) => queryClient.setQueryData(keys.me, u)} />;
+  if (!user) {
+    // Logging in always lands on home, whatever page you were on when you left.
+    const onAuthed = (u: PublicUser) => {
+      navigate('/', { replace: true });
+      queryClient.setQueryData(keys.me, u);
+    };
+    return <AuthPage onAuthed={onAuthed} />;
+  }
 
   const logout = async () => {
     await api.auth.logout().catch(() => {});
     realtime.disconnect();
     queryClient.clear();
     queryClient.setQueryData(keys.me, null);
+    navigate('/', { replace: true });
   };
 
   return (
