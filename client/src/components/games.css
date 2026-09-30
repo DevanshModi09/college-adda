@@ -1,0 +1,121 @@
+.game {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: min(420px, 80vw);
+}
+.game__big {
+  font-size: 26px;
+  line-height: 1.25;
+}
+.game__invite {
+  text-align: center;
+}
+.game__actions {
+  justify-content: center;
+}
+.game__head .spread {
+  font-size: 24px;
+}
+.game__status {
+  text-align: center;
+  margin-top: 8px;
+}
+.game__quit {
+  align-self: center;
+}
+
+/* XOXO */
+.ttt {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  width: min(300px, 70vw);
+  margin: 0 auto;
+}
+.ttt__cell {
+  aspect-ratio: 1;
+  background: var(--bg-deep);
+  border: 3px solid var(--frame);
+  color: var(--ink);
+  font-size: 56px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ttt__cell:not(:disabled):hover {
+  border-color: var(--yellow);
+}
+.ttt__cell:disabled {
+  cursor: default;
+}
+.ttt__cell.is-win {
+  border-color: var(--green);
+  background: color-mix(in srgb, var(--green) 18%, var(--bg-deep));
+}
+
+/* Connect 4 */
+.c4 {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  background: var(--frame);
+  width: min(380px, 80vw);
+  margin: 0 auto;
+}
+.c4__col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.c4__col:disabled {
+  cursor: default;
+}
+.c4__col:not(:disabled):hover .c4__disc:not([style]) {
+  background: color-mix(in srgb, var(--yellow) 30%, var(--bg-deep));
+}
+.c4__disc {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--bg-deep);
+}
+.c4__disc.is-win {
+  outline: 3px solid var(--ink);
+  outline-offset: -3px;
+}
+
+/* Rock paper scissors */
+.rps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.rps__pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 6px;
+  background: var(--bg-deep);
+  border: 3px solid var(--frame);
+  color: var(--ink);
+  cursor: pointer;
+}
+.rps__pick:not(:disabled):hover,
+.rps__pick.is-picked {
+  border-color: var(--yellow);
+}
+.rps__pick:disabled:not(.is-picked) {
+  opacity: 0.5;
+  cursor: default;
+}
+.rps__icon {
+  font-size: 44px;
+  line-height: 1;
+}
+.rps__last {
+  text-align: center;
+}

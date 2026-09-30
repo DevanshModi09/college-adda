@@ -1,0 +1,147 @@
+.home__xp {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 38px;
+  font-size: 24px;
+}
+.home__big {
+  font-size: 34px;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+.home__level {
+  font-size: 38px;
+  line-height: 1;
+  margin-bottom: 14px;
+}
+.home__clock {
+  font-size: 20px;
+  margin-top: 12px;
+}
+.home__sub {
+  margin: 16px 0 4px;
+}
+.home__start {
+  margin-top: 24px;
+}
+.home__hint {
+  margin-top: 14px;
+  font-size: 20px;
+}
+@media (max-width: 760px) {
+  .home__xp {
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 30px;
+  }
+  .home__xp .grow {
+    flex-basis: 100%;
+    order: 3;
+  }
+}
+
+/* today's run */
+.today {
+  margin-bottom: 40px;
+}
+.today__track {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+.today__slot {
+  flex-basis: 0;
+  min-width: 128px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--bg-deep);
+  border-top: 5px solid var(--cyan);
+  font-size: 20px;
+}
+.today__slot--lab {
+  border-top-color: var(--green);
+}
+.today__slot--past {
+  opacity: 0.4;
+}
+.today__slot--now {
+  background: var(--panel-2);
+  outline: 3px solid var(--pink);
+}
+.today__time {
+  font-family: var(--px);
+  font-size: 10px;
+  color: var(--cyan);
+}
+.today__subject {
+  font-size: 21px;
+  line-height: 1.05;
+}
+.today__room {
+  color: var(--muted);
+}
+.today__free {
+  font-family: var(--px);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--green);
+}
+
+/* second row */
+.home__row {
+  margin-top: 40px;
+}
+.free__sub {
+  margin-bottom: 12px;
+}
+.free__building {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  margin-top: 8px;
+}
+.free__rooms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.free__room {
+  padding: 0 8px;
+  border: 2px solid var(--green);
+  color: var(--green);
+  font-size: 20px;
+}
+.free__closed {
+  color: var(--green);
+}
+.squad {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.squad li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.squad__more {
+  display: inline-block;
+  margin-top: 12px;
+}
+@media (max-width: 760px) {
+  .today__slot {
+    min-width: 150px;
+  }
+}
+.today__mark {
+  margin-top: 14px;
+}

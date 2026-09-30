@@ -1,0 +1,121 @@
+.chat {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 34px;
+  height: calc(100vh - 150px);
+  min-height: 480px;
+}
+.chat__list {
+  overflow-y: auto;
+}
+.chat__list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.convo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 6px;
+  color: var(--ink);
+  border-bottom: 2px dotted var(--frame);
+}
+.convo:hover {
+  color: var(--ink);
+  background: var(--panel-2);
+}
+.convo--active {
+  background: var(--frame);
+}
+.convo__name,
+.convo__last {
+  display: block;
+}
+.chat__thread {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.chat__thread > .empty {
+  margin: auto;
+}
+.thread__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 14px;
+  border-bottom: 3px dotted var(--frame);
+}
+.thread__name {
+  font-size: 28px;
+  line-height: 1;
+}
+.thread__back {
+  display: none;
+}
+.thread__log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 4px;
+}
+.thread__item {
+  display: flex;
+  flex-direction: column;
+}
+.thread__day {
+  align-self: center;
+  color: var(--dim);
+  margin: 8px 0;
+}
+.thread__hello {
+  margin: auto;
+}
+.bubble {
+  align-self: flex-start;
+  max-width: 75%;
+  padding: 6px 12px 4px;
+  background: var(--panel-2);
+  border: 3px solid var(--frame);
+  overflow-wrap: anywhere;
+}
+.bubble--mine {
+  align-self: flex-end;
+  background: var(--cyan);
+  border-color: var(--cyan);
+  color: var(--bg);
+}
+.bubble__time {
+  display: block;
+  text-align: right;
+  font-size: 16px;
+  opacity: 0.7;
+}
+.thread__send {
+  padding-top: 12px;
+  border-top: 3px dotted var(--frame);
+}
+@media (max-width: 760px) {
+  .chat {
+    grid-template-columns: minmax(0, 1fr);
+    height: calc(100vh - 170px);
+  }
+  .chat--thread .chat__list,
+  .chat:not(.chat--thread) .chat__thread {
+    display: none;
+  }
+  .thread__back {
+    display: inline-grid;
+  }
+}
+.thread__gate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}

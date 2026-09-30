@@ -1,0 +1,51 @@
+.notice-compose {
+  margin-bottom: var(--gap);
+}
+.notice-compose .textarea {
+  width: 100%;
+}
+.notice-compose__foot {
+  align-items: center;
+  margin-top: 10px;
+}
+.notice-compose__pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--yellow);
+  cursor: pointer;
+}
+
+.notices {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.notice {
+  position: relative;
+}
+.notice--pinned {
+  border-color: var(--yellow);
+  box-shadow: 6px 6px 0 var(--bg-deep), inset 0 0 0 2px color-mix(in srgb, var(--yellow) 35%, transparent);
+}
+.notice__pin {
+  display: inline-block;
+  color: var(--yellow);
+  margin-bottom: 8px;
+}
+.notice__body {
+  font-size: 24px;
+  line-height: 1.25;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.notice__foot {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+.notice__by {
+  align-items: center;
+  gap: 10px;
+}

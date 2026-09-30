@@ -1,0 +1,20 @@
+{
+  "name": "college-adda",
+  "version": "1.0.0",
+  "private": true,
+  "description": "College Adda — deadlines, section timetables, attendance, code desks, a 2D campus, people and events. Built for JECRC Jaipur.",
+  "workspaces": ["shared", "server", "client"],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run dev -w @adda/server\" \"npm run dev -w @adda/client\"",
+    "build": "npm run build -w @adda/client",
+    "start": "NODE_ENV=production npm start -w @adda/server",
+    "typecheck": "npm run typecheck -w @adda/server && npm run typecheck -w @adda/client",
+    "test": "npm test -w @adda/server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

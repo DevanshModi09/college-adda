@@ -1,0 +1,90 @@
+.tt-now {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+.tt-now__text {
+  font-size: 26px;
+  margin-top: 6px;
+}
+.week {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+}
+.week__day {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 200px;
+  padding: 14px 12px;
+  border: 3px solid var(--frame);
+  background: var(--bg-deep);
+}
+.week__day--today {
+  border-color: var(--yellow);
+}
+.class {
+  padding: 8px 10px 10px;
+  background: var(--panel);
+  border-left: 6px solid var(--cyan);
+  font-size: 20px;
+}
+.class--lab {
+  border-left-color: var(--green);
+}
+.class--tutorial {
+  border-left-color: var(--yellow);
+}
+.class--live {
+  outline: 3px solid var(--pink);
+}
+.class__subject {
+  font-size: 24px;
+  line-height: 1.05;
+  margin: 2px 0;
+}
+.class .icon-btn {
+  min-width: 28px;
+  height: 28px;
+}
+@media (max-width: 1100px) {
+  .week {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .tt-now {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .week {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .week__day {
+    min-height: 0;
+  }
+}
+
+.tt-picker {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px 20px;
+  margin-bottom: 30px;
+}
+.tt-picker__field {
+  width: min(420px, 100%);
+}
+.tt-picker__note {
+  font-family: var(--px);
+  font-size: 10px;
+  line-height: 1.6;
+  padding-bottom: 12px;
+}
+.week--stale {
+  opacity: 0.6;
+}
+.class--extra {
+  border-left-style: dashed;
+}

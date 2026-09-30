@@ -1,0 +1,224 @@
+.campus {
+  position: relative;
+  height: calc(100vh - 110px);
+  min-height: 460px;
+  border: 4px solid var(--ink);
+  box-shadow:
+    0 0 0 4px var(--bg),
+    0 0 0 8px var(--frame);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.campus__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+.campus__boot {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--bg-deep);
+}
+.campus__hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 8px 12px;
+  background: rgba(16, 10, 34, 0.85);
+  border: 3px solid var(--frame);
+  pointer-events: none;
+}
+.campus__players {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 190px;
+  max-height: 40%;
+  overflow-y: auto;
+  padding: 8px 10px;
+  background: rgba(16, 10, 34, 0.85);
+  border: 3px solid var(--frame);
+}
+.campus__players ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+.campus__players button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: 20px;
+  text-align: left;
+  cursor: pointer;
+}
+.campus__players button:hover:not(:disabled) {
+  color: var(--yellow);
+}
+.campus__players button:disabled {
+  color: var(--yellow);
+  cursor: default;
+}
+.campus__swatch {
+  width: 10px;
+  height: 10px;
+  flex: none;
+}
+.campus .campus__zone {
+  position: absolute;
+  left: 20px;
+  top: 88px;
+  width: min(360px, calc(100% - 40px));
+  max-height: calc(100% - 200px);
+  overflow-y: auto;
+  --pad: 14px;
+}
+.campus__zone .line {
+  font-size: 22px;
+}
+.campus__order {
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.campus__order:hover,
+.campus__order:focus-visible {
+  color: var(--yellow);
+}
+.campus__sit {
+  margin: 8px 0 4px;
+}
+.campus__table {
+  margin-bottom: 6px;
+}
+.campus__menu-head {
+  margin: 10px 0 4px;
+}
+.campus__challenger {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 2px solid var(--panel-2);
+  font-size: 22px;
+}
+.campus__challenger .chip {
+  font-size: 16px;
+  padding: 0 6px;
+}
+.campus__rooms {
+  margin: 8px 0 10px;
+}
+.campus__chat {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  max-width: 560px;
+}
+.campus__chat .input {
+  background: rgba(16, 10, 34, 0.9);
+}
+.campus__log {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  background: rgba(16, 10, 34, 0.8);
+  font-size: 20px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.campus__help {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  background: rgba(16, 10, 34, 0.8);
+  font-family: var(--px);
+  font-size: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+@media (max-width: 1180px) {
+  .campus__help {
+    display: none;
+  }
+}
+.campus__pad {
+  display: none;
+}
+.pad {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border: 3px solid var(--ink);
+  background: rgba(34, 24, 69, 0.85);
+  color: var(--ink);
+  font-size: 18px;
+  touch-action: none;
+}
+.pad:active {
+  background: var(--frame);
+}
+.pad--up {
+  left: 52px;
+  top: 0;
+}
+.pad--down {
+  left: 52px;
+  top: 104px;
+}
+.pad--left {
+  left: 0;
+  top: 52px;
+}
+.pad--right {
+  left: 104px;
+  top: 52px;
+}
+@media (hover: none), (max-width: 760px) {
+  .campus__pad {
+    display: block;
+    position: absolute;
+    right: 16px;
+    bottom: 80px;
+    width: 156px;
+    height: 156px;
+  }
+  .campus__help {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .campus {
+    height: calc(100vh - 170px);
+  }
+  .campus__players {
+    display: none;
+  }
+}
+.campus__stand {
+  position: absolute;
+  left: 50%;
+  bottom: 84px;
+  transform: translateX(-50%);
+}

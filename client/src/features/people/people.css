@@ -1,0 +1,59 @@
+.people-filters {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 40px;
+}
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 34px;
+}
+.person {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.person__name {
+  font-size: 28px;
+  line-height: 1.05;
+}
+.person__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.person__cta {
+  margin-top: auto;
+}
+@media (max-width: 760px) {
+  .people-filters {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .people-filters > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+.friend-list {
+  list-style: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.friend-list--bare {
+  padding: 0;
+  margin-top: 14px;
+}
+.friend-list li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.friend-btns {
+  gap: 8px;
+}
+.friend-btns--block > .btn {
+  flex: 1;
+}
