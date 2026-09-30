@@ -4,7 +4,7 @@ import { PLATE_TTL_MS, WORLD_SIZE, type Facing, type Plate, type WorldPlayer } f
 // The client handles collisions against the map; the server keeps players honest
 // on bounds and speed, and decides who is close enough to hear proximity chat.
 
-export const SPAWN = { x: 27.5, y: 33 } as const;
+export const SPAWN = { x: 41.5, y: 49 } as const; // on the spine, just inside the main gate
 export const HEARING_RADIUS = 7; // tiles
 const MAX_SPEED = 9; // tiles/second, generous vs. the client's 5 to absorb network jitter
 const MIN_MOVE_INTERVAL = 45; // ms; extra moves are dropped, not queued

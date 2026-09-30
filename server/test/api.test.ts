@@ -399,24 +399,24 @@ describe('campus world', () => {
     // A normal step is broadcast...
     await new Promise((r) => setTimeout(r, 120));
     sa.inbox.length = 0;
-    sb.ws.send(JSON.stringify({ type: 'world:move', x: 27.5, y: 32.6, dir: 'up', moving: true }));
+    sb.ws.send(JSON.stringify({ type: 'world:move', x: SPAWN.x, y: SPAWN.y - 0.4, dir: 'up', moving: true }));
     let seen;
     do seen = await sa.next('world:player');
     while (seen.type === 'world:player' && seen.player.id !== b.user.id);
-    assert.ok(seen.type === 'world:player' && Math.abs(seen.player.y - 32.6) < 0.01);
+    assert.ok(seen.type === 'world:player' && Math.abs(seen.player.y - (SPAWN.y - 0.4)) < 0.01);
 
     // ...a teleport across the map is refused (position unchanged).
     await new Promise((r) => setTimeout(r, 120));
     sa.inbox.length = 0;
-    sc.ws.send(JSON.stringify({ type: 'world:move', x: 50, y: 3, dir: 'up', moving: true }));
+    sc.ws.send(JSON.stringify({ type: 'world:move', x: SPAWN.x + 40, y: 3, dir: 'up', moving: true }));
     do seen = await sa.next('world:player');
     while (seen.type === 'world:player' && seen.player.id !== c.user.id);
-    assert.ok(seen.type === 'world:player' && seen.player.x < 30 && seen.player.y > 30);
+    assert.ok(seen.type === 'world:player' && Math.abs(seen.player.x - SPAWN.x) < 2 && Math.abs(seen.player.y - SPAWN.y) < 2);
 
     // Walk C away (legit steps), then chat: B (near) hears A, C (far) doesn't.
     for (let i = 1; i <= 12; i++) {
       await new Promise((r) => setTimeout(r, 110));
-      sc.ws.send(JSON.stringify({ type: 'world:move', x: 27.5 - i * 0.9, y: 33, dir: 'left', moving: true }));
+      sc.ws.send(JSON.stringify({ type: 'world:move', x: SPAWN.x - i * 0.9, y: SPAWN.y, dir: 'left', moving: true }));
     }
     await new Promise((r) => setTimeout(r, 150));
     sa.ws.send(JSON.stringify({ type: 'world:say', text: 'hi campus' }));

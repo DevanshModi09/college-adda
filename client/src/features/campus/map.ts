@@ -138,109 +138,111 @@ export function buildCampus(): CampusMap {
     buildings.push({ label, x, y, w, h });
   };
 
-  // Roads: main east-west avenue, south avenue, central north-south spine, the plaza.
-  rect(0, 13, W, 2, T.Path);
-  rect(0, 25, W, 2, T.Path);
-  rect(27, 0, 2, H, T.Path);
-  rect(22, 15, 12, 10, T.Path);
-  rect(26, 18, 4, 3, T.Water); // fountain
+  // Roads (3 wide): main east-west avenue, south avenue, central north-south spine, the plaza.
+  rect(0, 20, W, 3, T.Path);
+  rect(0, 38, W, 3, T.Path);
+  rect(40, 0, 3, H, T.Path);
+  rect(33, 23, 17, 15, T.Path);
+  rect(38, 28, 7, 5, T.Water); // fountain
 
-  building('VIB BLOCK', 2, 1, 20, 11, [[12, 11], [13, 11]]);
-  building('NYB BLOCK', 34, 1, 20, 11, [[43, 11], [44, 11]]);
-  building('LIBRARY', 2, 16, 16, 8, [[17, 19], [17, 20]]);
-  building('CODE LAB', 38, 16, 16, 8, [[38, 19], [38, 20]]);
-  building('CANTEEN', 2, 28, 16, 7, [[9, 28], [10, 28]]);
+  building('VIB BLOCK', 3, 2, 30, 16, [[17, 17], [18, 17]]);
+  building('NYB BLOCK', 50, 2, 30, 16, [[64, 17], [65, 17]]);
+  building('LIBRARY', 3, 24, 24, 12, [[26, 29], [26, 30]]);
+  building('CODE LAB', 57, 24, 24, 12, [[57, 29], [57, 30]]);
+  building('CANTEEN', 3, 42, 24, 11, [[14, 42], [15, 42]]);
 
   // Short paths from doors to the roads.
-  rect(12, 12, 2, 1, T.Path);
-  rect(43, 12, 2, 1, T.Path);
-  rect(18, 19, 4, 2, T.Path);
-  rect(34, 19, 4, 2, T.Path);
-  rect(9, 27, 2, 1, T.Path);
+  rect(17, 18, 2, 2, T.Path);
+  rect(64, 18, 2, 2, T.Path);
+  rect(27, 29, 6, 2, T.Path);
+  rect(50, 29, 7, 2, T.Path);
+  rect(14, 41, 2, 1, T.Path);
 
-  // Classrooms: desk rows with a centre aisle.
-  for (const bx of [2, 34]) {
-    for (const y of [3, 5, 7, 9]) {
-      for (let x = bx + 3; x < bx + 17; x += 3) if (Math.abs(x - (bx + 10)) > 1) {
+  // Classrooms: rows of two-seat desks with room between them and a centre aisle to the door.
+  for (const bx of [3, 50]) {
+    for (const y of [5, 8, 11, 14]) {
+      for (let x = bx + 3; x + 1 < bx + 27; x += 4) if (x + 1 < bx + 13 || x > bx + 16) {
         set(x, y, T.Desk);
         set(x + 1, y, T.Desk);
       }
     }
   }
   // Library shelves.
-  for (const y of [18, 20, 22]) for (let x = 4; x < 15; x++) if (x !== 9) set(x, y, T.Shelf);
+  for (const y of [26, 29, 32]) for (let x = 5; x < 24; x++) if (x < 13 || x > 14) set(x, y, T.Shelf);
   // Code lab: rows of PCs.
-  for (const y of [18, 21]) for (let x = 41; x < 52; x += 2) set(x, y, T.Pc);
+  for (const y of [27, 32]) for (let x = 61; x < 79; x += 3) set(x, y, T.Pc);
   // Canteen: counter + tables.
-  rect(4, 29, 6, 1, T.Counter);
-  for (const [x, y] of [[5, 32], [8, 32], [11, 31], [14, 31], [11, 33], [14, 33]]) set(x!, y!, T.Desk);
+  rect(5, 44, 7, 1, T.Counter);
+  for (const y of [47, 50]) for (const x of [6, 10, 14, 18, 22]) set(x, y, T.Desk);
 
   // Event ground: open-air stage and benches.
-  rect(41, 28, 10, 2, T.Stage);
-  for (let x = 40; x < 53; x += 3) {
-    set(x, 32, T.Bench);
-    set(x + 1, 32, T.Bench);
+  rect(62, 42, 15, 3, T.Stage);
+  for (let x = 59; x < 80; x += 4) {
+    for (const y of [48, 51]) {
+      set(x, y, T.Bench);
+      set(x + 1, y, T.Bench);
+    }
   }
-  rect(44, 27, 2, 1, T.Path);
+  rect(68, 41, 2, 1, T.Path);
 
   // Plaza benches and the main gate.
-  for (const [x, y] of [[23, 16], [32, 16], [23, 23], [32, 23]]) set(x!, y!, T.Bench);
-  set(26, 34, T.Wall);
-  set(29, 34, T.Wall);
-  set(26, 35, T.Wall);
-  set(29, 35, T.Wall);
+  for (const [x, y] of [[34, 24], [48, 24], [34, 36], [48, 36]]) set(x!, y!, T.Bench);
+  for (const y of [52, 53]) {
+    set(39, y, T.Wall);
+    set(43, y, T.Wall);
+  }
 
   // ---------- Food street (east side): cafés and places to hang out ----------
-  rect(68, 0, 2, H, T.Path); // the food street itself
+  rect(102, 0, 3, H, T.Path); // the food street itself
 
   // Chai tapri: counter, then a table for 2, a table for 4, a table for 3 and another for 2.
-  building('CHAI TAPRI', 57, 1, 10, 11, [[61, 11], [62, 11]]);
-  rect(61, 12, 2, 1, T.Path);
-  rect(59, 3, 6, 1, T.Counter);
-  table('chai', 59, 6, 2);
-  table('chai', 64, 6, 4);
-  table('chai', 59, 9, 3);
-  table('chai', 64, 9, 2);
+  building('CHAI TAPRI', 85, 2, 15, 16, [[92, 17], [93, 17]]);
+  rect(92, 18, 2, 2, T.Path);
+  rect(88, 4, 9, 1, T.Counter);
+  table('chai', 89, 9, 2);
+  table('chai', 95, 9, 4);
+  table('chai', 89, 13, 3);
+  table('chai', 95, 13, 2);
 
   // Food court: three stalls along the back wall, tables either side of the aisle.
-  building('FOOD COURT', 71, 1, 12, 11, [[76, 11], [77, 11]]);
-  rect(76, 12, 2, 1, T.Path);
-  for (const x of [72, 76, 80]) rect(x, 3, 2, 1, T.Stall);
-  table('foodcourt', 73, 6, 4);
-  table('foodcourt', 80, 6, 4);
-  table('foodcourt', 73, 9, 3);
-  table('foodcourt', 80, 9, 2);
+  building('FOOD COURT', 106, 2, 18, 16, [[114, 17], [115, 17]]);
+  rect(114, 18, 2, 2, T.Path);
+  for (const x of [108, 113, 118]) rect(x, 4, 2, 1, T.Stall);
+  table('foodcourt', 110, 9, 4);
+  table('foodcourt', 119, 9, 4);
+  table('foodcourt', 110, 13, 3);
+  table('foodcourt', 119, 13, 2);
 
   // Adda lawn: open-air deck, umbrella tables with bean bags, and a juice cart.
-  rect(57, 16, 10, 8, T.Deck);
-  rect(61, 16, 2, 1, T.Stall);
-  table('lawn', 59, 18, 2, true);
-  table('lawn', 64, 18, 4, true);
-  table('lawn', 59, 21, 3, true);
-  table('lawn', 64, 21, 2, true);
+  rect(85, 24, 15, 12, T.Deck);
+  rect(91, 25, 2, 1, T.Stall);
+  table('lawn', 88, 29, 2, true);
+  table('lawn', 96, 29, 4, true);
+  table('lawn', 88, 33, 3, true);
+  table('lawn', 96, 33, 2, true);
 
   // Maggi point: door onto the food street.
-  building('MAGGI POINT', 71, 16, 12, 8, [[71, 19], [71, 20]]);
-  rect(70, 19, 1, 2, T.Path);
-  rect(74, 18, 8, 1, T.Counter); // staff work behind it, along the back wall
-  table('maggi', 74, 19, 2);
-  table('maggi', 78, 20, 4);
-  table('maggi', 74, 21, 3);
+  building('MAGGI POINT', 106, 24, 18, 12, [[106, 29], [106, 30]]);
+  rect(105, 29, 1, 2, T.Path);
+  rect(110, 26, 10, 1, T.Counter); // staff work behind it, along the back wall
+  table('maggi', 111, 29, 2);
+  table('maggi', 118, 30, 4);
+  table('maggi', 111, 33, 3);
 
   // Game zone: carrom + foosball with seats, arcade cabinets along the back.
-  building('GAME ZONE', 71, 28, 12, 7, [[76, 28], [77, 28]]);
-  rect(76, 27, 2, 1, T.Path);
-  for (const x of [73, 79]) {
-    rect(x, 30, 2, 1, T.Game);
-    set(x - 1, 30, T.Seat);
-    set(x + 2, 30, T.Seat);
+  building('GAME ZONE', 106, 42, 18, 11, [[114, 42], [115, 42]]);
+  rect(114, 41, 2, 1, T.Path);
+  for (const x of [110, 118]) {
+    rect(x, 46, 2, 1, T.Game);
+    set(x - 1, 46, T.Seat);
+    set(x + 2, 46, T.Seat);
   }
-  for (const x of [73, 75, 79, 81]) set(x, 33, T.Pc);
+  for (const x of [109, 112, 117, 120]) set(x, 50, T.Pc);
 
   // Chill garden: bonfire ringed by bean bags.
-  rect(57, 28, 10, 7, T.Deck);
-  rect(61, 31, 2, 1, T.Fire);
-  for (const [x, y] of [[61, 29], [62, 29], [59, 30], [64, 30], [59, 32], [64, 32], [61, 33], [62, 33]] as const) set(x, y, T.Beanbag);
+  rect(85, 42, 15, 11, T.Deck);
+  rect(91, 46, 2, 1, T.Fire);
+  for (const [x, y] of [[91, 43], [92, 43], [87, 45], [96, 45], [87, 47], [96, 47], [91, 49], [92, 49]] as const) set(x, y, T.Beanbag);
 
   // Trees and flowers on open grass, kept off anything walkable-important.
   const nearNonGrass = (x: number, y: number) => {
@@ -262,20 +264,20 @@ export function buildCampus(): CampusMap {
     }
 
   const zones: Zone[] = [
-    { id: 'vib', label: 'VIB BLOCK', x: 3, y: 2, w: 18, h: 9 },
-    { id: 'nyb', label: 'NYB BLOCK', x: 35, y: 2, w: 18, h: 9 },
-    { id: 'library', label: 'LIBRARY', x: 3, y: 17, w: 14, h: 6 },
-    { id: 'codelab', label: 'CODE LAB', x: 39, y: 17, w: 14, h: 6 },
-    { id: 'canteen', label: 'CANTEEN', x: 3, y: 29, w: 14, h: 5 },
-    { id: 'events', label: 'EVENT GROUND', x: 38, y: 27, w: 16, h: 8 },
-    { id: 'plaza', label: 'FOUNTAIN PLAZA', x: 22, y: 15, w: 12, h: 10 },
-    { id: 'gate', label: 'MAIN GATE', x: 25, y: 30, w: 6, h: 6 },
-    { id: 'chai', label: 'CHAI TAPRI', x: 58, y: 2, w: 8, h: 9 },
-    { id: 'foodcourt', label: 'FOOD COURT', x: 72, y: 2, w: 10, h: 9 },
-    { id: 'lawn', label: 'ADDA LAWN', x: 57, y: 16, w: 10, h: 8 },
-    { id: 'maggi', label: 'MAGGI POINT', x: 72, y: 17, w: 10, h: 6 },
-    { id: 'gamezone', label: 'GAME ZONE', x: 72, y: 29, w: 10, h: 5 },
-    { id: 'garden', label: 'CHILL GARDEN', x: 57, y: 28, w: 10, h: 7 },
+    { id: 'vib', label: 'VIB BLOCK', x: 4, y: 3, w: 28, h: 14 },
+    { id: 'nyb', label: 'NYB BLOCK', x: 51, y: 3, w: 28, h: 14 },
+    { id: 'library', label: 'LIBRARY', x: 4, y: 25, w: 22, h: 10 },
+    { id: 'codelab', label: 'CODE LAB', x: 58, y: 25, w: 22, h: 10 },
+    { id: 'canteen', label: 'CANTEEN', x: 4, y: 43, w: 22, h: 9 },
+    { id: 'events', label: 'EVENT GROUND', x: 57, y: 41, w: 25, h: 12 },
+    { id: 'plaza', label: 'FOUNTAIN PLAZA', x: 33, y: 23, w: 17, h: 15 },
+    { id: 'gate', label: 'MAIN GATE', x: 37, y: 45, w: 9, h: 9 },
+    { id: 'chai', label: 'CHAI TAPRI', x: 86, y: 3, w: 13, h: 14 },
+    { id: 'foodcourt', label: 'FOOD COURT', x: 107, y: 3, w: 16, h: 14 },
+    { id: 'lawn', label: 'ADDA LAWN', x: 85, y: 24, w: 15, h: 12 },
+    { id: 'maggi', label: 'MAGGI POINT', x: 107, y: 25, w: 16, h: 10 },
+    { id: 'gamezone', label: 'GAME ZONE', x: 107, y: 43, w: 16, h: 9 },
+    { id: 'garden', label: 'CHILL GARDEN', x: 85, y: 42, w: 15, h: 11 },
   ];
 
   const at = (x: number, y: number): T => (x < 0 || y < 0 || x >= W || y >= H ? T.Wall : (tiles[y * W + x] as T));
@@ -283,22 +285,22 @@ export function buildCampus(): CampusMap {
     {
       zone: 'chai',
       uniform: '#ff8a3d',
-      kitchen: [65, 2],
-      staff: [{ x: 60, y: 2, name: 'RAJU' }, { x: 62, y: 2, name: 'CHOTU' }, { x: 64, y: 2, name: 'PAPPU' }],
+      kitchen: [98, 3],
+      staff: [{ x: 89, y: 3, name: 'RAJU' }, { x: 92, y: 3, name: 'CHOTU' }, { x: 95, y: 3, name: 'PAPPU' }],
     },
     {
       zone: 'foodcourt',
       uniform: '#ff3ea5',
-      kitchen: [75, 2],
-      staff: [{ x: 73, y: 2, name: 'SUNIL' }, { x: 77, y: 2, name: 'PINKY' }, { x: 81, y: 2, name: 'AMAN' }],
+      kitchen: [111, 3],
+      staff: [{ x: 109, y: 3, name: 'SUNIL' }, { x: 114, y: 3, name: 'PINKY' }, { x: 119, y: 3, name: 'AMAN' }],
     },
     {
       zone: 'maggi',
       uniform: '#ffe04a',
-      kitchen: [73, 17],
-      staff: [{ x: 75, y: 17, name: 'BABLU' }, { x: 78, y: 17, name: 'MONU' }, { x: 80, y: 17, name: 'GOLU' }],
+      kitchen: [108, 25],
+      staff: [{ x: 111, y: 25, name: 'BABLU' }, { x: 114, y: 25, name: 'MONU' }, { x: 117, y: 25, name: 'GOLU' }],
     },
-    { zone: 'lawn', uniform: '#7cff6b', kitchen: [60, 16], staff: [{ x: 63, y: 16, name: 'KAKA' }, { x: 60, y: 17, name: 'LALLU' }] },
+    { zone: 'lawn', uniform: '#7cff6b', kitchen: [90, 25], staff: [{ x: 94, y: 25, name: 'KAKA' }, { x: 90, y: 26, name: 'LALLU' }] },
   ];
 
   const seatTable = new Map<number, DiningTable>();
