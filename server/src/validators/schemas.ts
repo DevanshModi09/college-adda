@@ -176,9 +176,7 @@ export const pinCreateSchema = z.object({
   kind: z.enum(['lost', 'found']),
   title: required(60, 'What it is'),
   details: text(300).default(''),
-  x: z.number().min(0),
-  y: z.number().min(0),
-  place: text(30).default(''),
+  place: text(60).default(''),
 });
 
 export const pinResolveSchema = z.object({ resolved: z.boolean() });

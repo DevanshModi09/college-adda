@@ -19,6 +19,7 @@ const LINKS = [
   { to: '/desks', label: 'CODE DESK' },
   { to: '/people', label: 'PEOPLE' },
   { to: '/events', label: 'EVENTS' },
+  { to: '/lostfound', label: 'LOST & FOUND' },
 ];
 
 export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => void }) {

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link } from 'react-router';
-import type { LostFoundPin, PublicUser, WorldPlayer } from '@adda/shared';
+import type { PublicUser, WorldPlayer } from '@adda/shared';
 import { realtime } from '../../lib/realtime';
-import { useLostFound, usePerson } from '../../hooks/queries';
+import { usePerson } from '../../hooks/queries';
 import { Avatar, Loading, Modal } from '../../components/ui';
 import { FriendButton } from '../../components/FriendButton';
 import { GAME_NAMES, type GameKind } from '@adda/shared';
@@ -12,7 +12,6 @@ import { buildCampus, type Zone } from './map';
 import { prerenderMap } from './render';
 import { CampusEngine, type Seating } from './engine';
 import { ZonePanel } from './ZonePanel';
-import { LostFoundBoard, PinCard } from './LostFound';
 import './campus.css';
 
 const KEYMAP: Record<string, string> = {
@@ -49,10 +48,6 @@ export function CampusPage({ me }: { me: PublicUser }) {
   const [players, setPlayers] = useState<WorldPlayer[]>([]);
   const [picked, setPicked] = useState<WorldPlayer | null>(null);
   const [log, setLog] = useState<ChatLine[]>([]);
-  const [board, setBoard] = useState(false);
-  const [pin, setPin] = useState<LostFoundPin | null>(null);
-  const pins = useLostFound().data;
-  const openPins = pins?.filter((p) => !p.resolved).length ?? 0;
   const sitRef = useRef(() => {});
 
   // Boot: wait for the pixel fonts (map signs are baked into the prerender), then start the loop.
@@ -71,7 +66,6 @@ export function CampusPage({ me }: { me: PublicUser }) {
           onPlayers: setPlayers,
           onPick: setPicked,
           onSeat: setSeating,
-          onPin: setPin,
         });
         engineRef.current = engine;
         engine.setMinimap(miniRef.current);
@@ -97,11 +91,6 @@ export function CampusPage({ me }: { me: PublicUser }) {
       realtime.leaveWorld();
     };
   }, [map, me.id]);
-
-  // Keep the map's pins in step with the board (live updates come through the query).
-  useEffect(() => {
-    if (ready && pins) engineRef.current?.setPins(pins);
-  }, [ready, pins]);
 
   // Keyboard: movement unless typing; Enter jumps to chat, Esc leaves it.
   useEffect(() => {
@@ -145,16 +134,6 @@ export function CampusPage({ me }: { me: PublicUser }) {
   };
 
   sitRef.current = sit;
-
-  const goTo = (p: LostFoundPin) => {
-    engineRef.current?.goTo(p.x, p.y);
-    setBoard(false);
-    setPin(null);
-  };
-  const here = () => {
-    const me = engineRef.current?.position;
-    return me ? { x: +me.x.toFixed(2), y: +me.y.toFixed(2) } : null;
-  };
 
   const say = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -207,9 +186,6 @@ export function CampusPage({ me }: { me: PublicUser }) {
             engineRef.current?.miniClick((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
           }}
         />
-        <button type="button" className="btn btn--sm campus__lf" onClick={() => setBoard(true)}>
-          LOST &amp; FOUND{openPins > 0 && <span> · {openPins}</span>}
-        </button>
         <div className="campus__roster">
           <p className="px-xs c-cyan">PLAYERS</p>
           <ul>
@@ -255,14 +231,8 @@ export function CampusPage({ me }: { me: PublicUser }) {
         <button type="button" className="pad pad--down" {...pad('down')}>▼</button>
       </div>
 
-      <p className="campus__help dim">WASD / ARROWS TO WALK · CLICK TO WALK THERE · E TO SIT · CLICK A PLAYER OR PIN · ENTER TO TALK</p>
+      <p className="campus__help dim">WASD / ARROWS TO WALK · CLICK TO WALK THERE · E TO SIT · CLICK A PLAYER · ENTER TO TALK</p>
 
-      <Modal open={board} title="LOST & FOUND" onClose={() => setBoard(false)}>
-        {board && <LostFoundBoard pins={pins ?? []} place={zone?.label ?? 'JECRC CAMPUS'} here={here()} onOpen={setPin} onGo={goTo} />}
-      </Modal>
-      <Modal open={!!pin} title={pin?.kind === 'found' ? 'FOUND ON CAMPUS' : 'LOST ON CAMPUS'} onClose={() => setPin(null)}>
-        {pin && <PinCard pin={pins?.find((p) => p.id === pin.id) ?? pin} me={me} onGo={() => goTo(pin)} onDone={() => setPin(null)} />}
-      </Modal>
       <Modal open={!!picked} title="PLAYER" onClose={() => setPicked(null)}>
         {picked && <PlayerCard id={picked.id} onChallenge={() => setPicked(null)} />}
       </Modal>

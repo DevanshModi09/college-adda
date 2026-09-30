@@ -246,29 +246,30 @@ describe('feed', () => {
 });
 
 describe('lost & found', () => {
-  it('pins items on the map, lets only the owner resolve or delete, and caps open pins', async () => {
-    const a = await register('lf_ira', 'Ira');
-    const b = await register('lf_jay', 'Jay');
+  it('only lets admins post and resolve items; students see the board and who to message', async () => {
+    const admin = await register('lf_admin', 'Ira');
+    await usersRepo.promoteAdmins(['lf_admin']);
+    const student = await register('lf_jay', 'Jay');
 
-    const pin = await call(a.cookie, '/lostfound', 'POST', { kind: 'lost', title: 'Blue water bottle', details: 'Milton, has stickers', x: 40.5, y: 12.2, place: 'LIBRARY' });
+    const item = { kind: 'found', title: 'Blue water bottle', details: 'Milton, has stickers', place: 'Library, 2nd floor' };
+    assert.equal((await call(student.cookie, '/lostfound', 'POST', item)).status, 403, 'students message the admin instead');
+
+    const pin = await call(admin.cookie, '/lostfound', 'POST', item);
     assert.equal(pin.status, 201);
-    assert.deepEqual([pin.json.kind, pin.json.place, pin.json.resolved, pin.json.canEdit, pin.json.author.username], ['lost', 'LIBRARY', false, true, 'lf_ira']);
-    assert.equal((await call(a.cookie, '/lostfound', 'POST', { kind: 'stolen', title: 'x', x: 1, y: 1 })).status, 400);
-    assert.equal((await call(a.cookie, '/lostfound', 'POST', { kind: 'found', title: 'x', x: 9999, y: 1 })).status, 400);
+    assert.deepEqual([pin.json.kind, pin.json.place, pin.json.resolved, pin.json.canEdit], ['found', 'Library, 2nd floor', false, true]);
+    assert.equal((await call(admin.cookie, '/lostfound', 'POST', { ...item, kind: 'stolen' })).status, 400);
 
-    const seen = (await call(b.cookie, '/lostfound')).json.find((p: { id: string }) => p.id === pin.json.id);
+    const board = (await call(student.cookie, '/lostfound')).json;
+    assert.ok('contact' in board);
+    const seen = board.pins.find((p: { id: string }) => p.id === pin.json.id);
     assert.equal(seen.canEdit, false);
-    assert.equal((await call(b.cookie, `/lostfound/${pin.json.id}`, 'PATCH', { resolved: true })).status, 403);
-    assert.equal((await call(b.cookie, `/lostfound/${pin.json.id}`, 'DELETE')).status, 403);
+    assert.equal((await call(student.cookie, `/lostfound/${pin.json.id}`, 'PATCH', { resolved: true })).status, 403);
+    assert.equal((await call(student.cookie, `/lostfound/${pin.json.id}`, 'DELETE')).status, 403);
 
-    const done = await call(a.cookie, `/lostfound/${pin.json.id}`, 'PATCH', { resolved: true });
-    assert.equal(done.json.resolved, true);
-    assert.ok((await call(b.cookie, '/lostfound')).json.some((p: { id: string; resolved: boolean }) => p.id === pin.json.id && p.resolved), 'recently resolved pins stay listed');
-
-    for (let i = 0; i < 10; i++) assert.equal((await call(b.cookie, '/lostfound', 'POST', { kind: 'found', title: `thing ${i}`, x: 5, y: 5 })).status, 201);
-    assert.equal((await call(b.cookie, '/lostfound', 'POST', { kind: 'found', title: 'one too many', x: 5, y: 5 })).status, 400);
-
-    assert.equal((await call(a.cookie, `/lostfound/${pin.json.id}`, 'DELETE')).status, 204);
+    assert.equal((await call(admin.cookie, `/lostfound/${pin.json.id}`, 'PATCH', { resolved: true })).json.resolved, true);
+    const after = (await call(student.cookie, '/lostfound')).json.pins;
+    assert.ok(after.some((p: { id: string; resolved: boolean }) => p.id === pin.json.id && p.resolved), 'recently resolved items stay listed');
+    assert.equal((await call(admin.cookie, `/lostfound/${pin.json.id}`, 'DELETE')).status, 204);
   });
 });
 

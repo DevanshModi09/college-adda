@@ -1,4 +1,4 @@
-import type { Facing, LostFoundPin, Plate, ServerMessage, WorldPlayer } from '@adda/shared';
+import type { Facing, Plate, ServerMessage, WorldPlayer } from '@adda/shared';
 import { realtime } from '../../lib/realtime';
 import { canStand, findPath, H, standOn, TILE, W, type CampusMap, type DiningTable, type Zone } from './map';
 import { drawAvatar, drawBubble, drawLabel } from './render';
@@ -48,7 +48,6 @@ export interface EngineEvents {
   onPlayers: (players: WorldPlayer[]) => void;
   onPick: (player: WorldPlayer) => void;
   onSeat: (seating: Seating | null) => void;
-  onPin: (pin: LostFoundPin) => void;
 }
 
 /**
@@ -75,8 +74,6 @@ export class CampusEngine {
   private sentMoving = false;
   private zone: Zone | null = null;
   private plates = new Map<string, Plate[]>();
-  /** Open lost & found pins, drawn as markers on the map. */
-  private pins: LostFoundPin[] = [];
   private mini: HTMLCanvasElement | null = null;
   private seatKey = '';
   private scale = 3;
@@ -182,11 +179,7 @@ export class CampusEngine {
     this.goTo(fx * W, fy * H);
   }
 
-  setPins(pins: LostFoundPin[]) {
-    this.pins = pins.filter((p) => !p.resolved);
-  }
-
-  /** Walk to the spot (x, y), around walls, e.g. to go look at a lost & found pin. */
+  /** Walk to the spot (x, y), around walls. */
   goTo(x: number, y: number) {
     const me = this.me;
     if (!me) return;
@@ -213,11 +206,6 @@ export class CampusEngine {
         this.events.onPick(a.p);
         return;
       }
-    }
-    const pin = this.pins.find((p) => Math.abs(p.x - tx) < 0.5 && ty > p.y - 1.3 && ty < p.y + 0.2);
-    if (pin) {
-      this.events.onPin(pin);
-      return;
     }
     this.clearWalk();
     this.target = { x: tx, y: ty + 0.2 };
@@ -435,7 +423,6 @@ export class CampusEngine {
       m.fillStyle = color;
       m.fillRect(Math.round(x * sx - size / 2), Math.round(y * sy - size / 2), size, size);
     };
-    for (const p of this.pins) dot(p.x, p.y - 0.3, p.kind === 'lost' ? '#ff3ea5' : '#7cff6b');
     for (const a of this.others.values()) dot(a.rx, a.ry - 0.3, a.p.color);
     const me = this.me;
     if (me) {
@@ -449,30 +436,6 @@ export class CampusEngine {
     m.strokeStyle = 'rgba(244,241,255,0.85)';
     m.lineWidth = Math.max(1, Math.round(dpr));
     m.strokeRect(Math.round((this.cam.x / TILE) * sx) + 0.5, Math.round((this.cam.y / TILE) * sy) + 0.5, Math.round(vw * sx) - 1, Math.round(vh * sy) - 1);
-  }
-
-  /** Map-pin markers: pink "?" for lost, green "!" for found, gently bobbing. */
-  private drawPins(t: number) {
-    const { ctx } = this;
-    ctx.font = '8px VT323';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    for (const [i, p] of this.pins.entries()) {
-      const x = Math.round(p.x * TILE);
-      const y = Math.round(p.y * TILE);
-      const bob = Math.round(Math.sin(t / 300 + i) * 1.5);
-      const color = p.kind === 'lost' ? '#ff3ea5' : '#7cff6b';
-      ctx.fillStyle = 'rgba(16,10,34,0.35)';
-      ctx.fillRect(x - 3, y - 1, 7, 2); // shadow
-      ctx.fillStyle = '#100a22';
-      ctx.fillRect(x - 5, y - 19 + bob, 11, 11); // outline
-      ctx.fillRect(x - 1, y - 9 + bob, 3, 8);
-      ctx.fillStyle = color;
-      ctx.fillRect(x - 4, y - 18 + bob, 9, 9);
-      ctx.fillRect(x, y - 9 + bob, 1, 7);
-      ctx.fillStyle = '#100a22';
-      ctx.fillText(p.kind === 'lost' ? '?' : '!', x + 0.5, y - 13 + bob);
-    }
   }
 
   private frame = (t: number) => {
@@ -508,7 +471,6 @@ export class CampusEngine {
     ctx.imageSmoothingEnabled = false;
     ctx.setTransform(scale, 0, 0, scale, -Math.round(this.cam.x * scale), -Math.round(this.cam.y * scale));
     ctx.drawImage(this.mapImage, 0, 0);
-    this.drawPins(t);
 
     // Café staff and waiters are drawn in the same y-sorted pass so people overlap correctly.
     type Npc = { y: number; draw: () => void };

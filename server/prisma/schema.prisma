@@ -313,8 +313,6 @@ model LostFound {
   kind      String // 'lost' | 'found'
   title     String
   details   String  @default("")
-  x         Float
-  y         Float
   place     String  @default("")
   resolved  Boolean @default(false)
   createdAt BigInt  @map("created_at")

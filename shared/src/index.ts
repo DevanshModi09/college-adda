@@ -83,23 +83,26 @@ export interface Post {
   createdAt: number;
 }
 
-/** Something lost or found, pinned where it happened on the campus map. */
+/** Something lost or found on campus. Students report it to the admin, who posts it. */
 export interface LostFoundPin {
   id: string;
   kind: 'lost' | 'found';
   title: string;
   details: string;
-  /** Tile position on the campus map. */
-  x: number;
-  y: number;
-  /** Map area it was pinned in, e.g. 'LIBRARY'. */
+  /** Where it was lost or found, e.g. 'Library, 2nd floor'. */
   place: string;
-  /** Returned to its owner / owner found it: kept for a week, off the map. */
+  /** Back with its owner: kept on the board for a week. */
   resolved: boolean;
   author: PublicUser | null;
-  /** Viewer may resolve or delete it (the author, or an admin). */
+  /** Viewer may add, resolve or delete items (admins). */
   canEdit: boolean;
   createdAt: number;
+}
+
+export interface LostFoundBoard {
+  pins: LostFoundPin[];
+  /** The admin to message to report or claim an item. */
+  contact: PublicUser | null;
 }
 
 /** A class section: branch + year + letter. `key` is 'CSE|3|B'. */

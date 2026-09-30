@@ -16,6 +16,7 @@ import { RoomPage } from './features/rooms/RoomPage';
 import { PeoplePage } from './features/people/PeoplePage';
 import { ChatPage } from './features/chat/ChatPage';
 import { EventsPage } from './features/events/EventsPage';
+import { LostFoundPage } from './features/lostfound/LostFoundPage';
 import { ProfilePage } from './features/profile/ProfilePage';
 import { CampusPage } from './features/campus/CampusPage';
 import { AttendancePage } from './features/attendance/AttendancePage';
@@ -69,6 +70,7 @@ export function App() {
         <Route path="chat" element={<ChatPage me={user} />} />
         <Route path="chat/:userId" element={<ChatPage me={user} />} />
         <Route path="events" element={<EventsPage me={user} />} />
+        <Route path="lostfound" element={<LostFoundPage me={user} />} />
         <Route path="profile" element={<ProfilePage user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

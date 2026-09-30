@@ -9,6 +9,7 @@ import type {
   ClassSlot,
   Conversation,
   Deadline,
+  LostFoundBoard,
   LostFoundPin,
   DirectMessage,
   FreeRooms,
@@ -111,7 +112,7 @@ export interface PeopleQuery {
 
 type UserRes = { user: PublicUser };
 
-export type PinBody = Pick<LostFoundPin, 'kind' | 'title' | 'details' | 'x' | 'y' | 'place'>;
+export type PinBody = Pick<LostFoundPin, 'kind' | 'title' | 'details' | 'place'>;
 
 export const api = {
   auth: {
@@ -186,7 +187,7 @@ export const api = {
     remove: (id: string) => del(`/feed/${id}`),
   },
   lostFound: {
-    list: () => get<LostFoundPin[]>('/lostfound'),
+    list: () => get<LostFoundBoard>('/lostfound'),
     create: (body: PinBody) => post<LostFoundPin>('/lostfound', body),
     resolve: (id: string, resolved: boolean) => patch<LostFoundPin>(`/lostfound/${id}`, { resolved }),
     remove: (id: string) => del(`/lostfound/${id}`),

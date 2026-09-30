@@ -7,8 +7,6 @@ export interface PinRecord {
   kind: 'lost' | 'found';
   title: string;
   details: string;
-  x: number;
-  y: number;
   place: string;
   resolved: boolean;
   createdAt: number;
@@ -34,13 +32,9 @@ export const lostFoundRepo = {
     return row ? toRecord(row) : null;
   },
 
-  async openCount(userId: string): Promise<number> {
-    return db().lostFound.count({ where: { userId, resolved: false } });
-  },
-
   async insert(p: PinRecord): Promise<void> {
-    const { id, userId, kind, title, details, x, y, place, resolved, createdAt } = p;
-    await db().lostFound.create({ data: { id, userId, kind, title, details, x, y, place, resolved, createdAt } });
+    const { id, userId, kind, title, details, place, resolved, createdAt } = p;
+    await db().lostFound.create({ data: { id, userId, kind, title, details, place, resolved, createdAt } });
   },
 
   async setResolved(id: string, resolved: boolean): Promise<void> {

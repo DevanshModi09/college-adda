@@ -137,7 +137,7 @@ export const feedController = {
 
 export const lostFoundController = {
   async list(req: Request, res: Response) {
-    res.json(await lostFoundService.list(currentUser(req)));
+    res.json(await lostFoundService.board(currentUser(req)));
   },
   async create(req: Request, res: Response) {
     res.status(201).json(await lostFoundService.create(currentUser(req), pinCreateSchema.parse(req.body)));

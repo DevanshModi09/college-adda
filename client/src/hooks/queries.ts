@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { AssignmentStatus, AttendanceStatus, CampusEvent, ClassSlot, Deadline, LostFoundPin, Post, SubjectAssignments } from '@adda/shared';
+import type { AssignmentStatus, AttendanceStatus, CampusEvent, ClassSlot, Deadline, LostFoundBoard, LostFoundPin, Post, SubjectAssignments } from '@adda/shared';
 import { api, type ClassBody, type DeadlineBody, type EventBody, type PeopleQuery, type PinBody, type RoomBody } from '../lib/api';
 import { keys, queryClient } from '../lib/queryClient';
 import { toast } from '../stores/toasts';
@@ -281,7 +281,8 @@ export const useDeletePost = () =>
 // ---------- lost & found ----------
 export const useLostFound = () => useQuery({ queryKey: keys.lostFound, queryFn: api.lostFound.list });
 
-const setPins = (fn: (list: LostFoundPin[]) => LostFoundPin[]) => queryClient.setQueryData<LostFoundPin[]>(keys.lostFound, (prev) => fn(prev ?? []));
+const setPins = (fn: (list: LostFoundPin[]) => LostFoundPin[]) =>
+  queryClient.setQueryData<LostFoundBoard>(keys.lostFound, (prev) => prev && { ...prev, pins: fn(prev.pins) });
 
 export const useCreatePin = () =>
   useMutation({

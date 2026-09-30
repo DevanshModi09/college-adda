@@ -1,0 +1,51 @@
+.lf__report {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.lf__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+.lf__item {
+  display: flex;
+  flex-direction: column;
+}
+.lf__item--done {
+  opacity: 0.6;
+}
+.lf__kind {
+  display: inline-block;
+  padding: 0 8px;
+  font-family: var(--px);
+  font-size: 9px;
+  line-height: 20px;
+  color: var(--bg);
+}
+.lf__kind--lost {
+  background: var(--pink);
+}
+.lf__kind--found {
+  background: var(--green);
+}
+.lf__title {
+  font-size: 30px;
+  line-height: 1.05;
+  margin: 10px 0 4px;
+}
+.lf__details {
+  margin-top: 8px;
+  white-space: pre-line;
+}
+.lf__foot {
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 14px;
+}
+.lf__sorted {
+  color: var(--muted);
+  margin: 36px 0 20px;
+}
