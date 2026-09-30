@@ -111,7 +111,7 @@ if (!feedService.list(admin, { limit: 1 }).length) {
   ];
   const liked = [['priya', 'aarav', 'ananya', 'kabir'], ['devansh'], ['aarav', 'ananya'], ['priya', 'devansh', 'kabir'], []];
   for (const [i, p] of posts.entries()) {
-    const post = feedService.create(user(p.by), { body: p.body });
+    const post = await feedService.create(user(p.by), { body: p.body });
     for (const fan of liked[i] ?? []) feedService.toggleLike(user(fan), post.id);
   }
 }

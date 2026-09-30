@@ -21,7 +21,7 @@ export function createApp() {
           'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           'font-src': ["'self'", 'https://fonts.gstatic.com'],
           'connect-src': ["'self'", 'ws:', 'wss:'],
-          'img-src': ["'self'", 'data:'],
+          'img-src': ["'self'", 'data:', 'https://res.cloudinary.com'], // feed photos on Cloudinary
         },
       },
     })

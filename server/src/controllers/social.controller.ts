@@ -115,8 +115,8 @@ export const feedController = {
   list(req: Request, res: Response) {
     res.json(feedService.list(currentUser(req), feedQuerySchema.parse(req.query)));
   },
-  create(req: Request, res: Response) {
-    res.status(201).json(feedService.create(currentUser(req), postCreateSchema.parse(req.body)));
+  async create(req: Request, res: Response) {
+    res.status(201).json(await feedService.create(currentUser(req), postCreateSchema.parse(req.body)));
   },
   like(req: Request, res: Response) {
     res.json(feedService.toggleLike(currentUser(req), idParam.parse(req.params).id));

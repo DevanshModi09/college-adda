@@ -3,8 +3,10 @@ import { postsRepo, type PostRecord } from '../repositories/posts.repo.ts';
 import type { UserRecord } from '../repositories/users.repo.ts';
 import { bus } from '../realtime/bus.ts';
 import { transaction } from '../db/database.ts';
-import { badRequest, forbidden, newId, notFound } from '../utils/http.ts';
+import { badRequest, forbidden, HttpError, newId, notFound } from '../utils/http.ts';
 import { usersService } from './users.service.ts';
+import { cloudinary } from './cloudinary.ts';
+import { logger } from '../utils/logger.ts';
 
 export const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 
@@ -34,7 +36,7 @@ function present(viewer: UserRecord, records: PostRecord[]): Post[] {
   return records.map((p) => ({
     id: p.id,
     body: p.body,
-    image: p.hasImage ? `/api/feed/${p.id}/image` : null,
+    image: p.imageUrl ?? (p.hasImage ? `/api/feed/${p.id}/image` : null),
     author: authors.get(p.authorId) ?? null,
     likes: p.likes,
     liked: p.liked,
@@ -52,13 +54,24 @@ function find(viewer: UserRecord, id: string): PostRecord {
 export const feedService = {
   list: (viewer: UserRecord, opts: { before?: number; limit: number }) => present(viewer, postsRepo.list(viewer.id, opts)),
 
-  create(viewer: UserRecord, input: { body: string; image?: string }): Post {
+  async create(viewer: UserRecord, input: { body: string; image?: string }): Promise<Post> {
     if (!input.body && !input.image) throw badRequest('Write something or add a photo');
-    const image = input.image ? decodeImage(input.image) : null;
+    const image = input.image ? decodeImage(input.image) : null; // validated before anything leaves the server
     const id = newId();
+
+    // With Cloudinary configured the photo goes there and we keep only its URL; otherwise into SQLite.
+    let hosted: { url: string; publicId: string } | null = null;
+    if (image && cloudinary.enabled()) {
+      try {
+        hosted = await cloudinary.upload(image.data, image.mime);
+      } catch (err) {
+        logger.error('cloudinary upload failed', { err: String(err) });
+        throw new HttpError(502, 'Photo upload failed, try again');
+      }
+    }
     transaction(() => {
-      postsRepo.insert({ id, authorId: viewer.id, body: input.body, createdAt: Date.now() });
-      if (image) postsRepo.insertImage(id, image.mime, image.data);
+      postsRepo.insert({ id, authorId: viewer.id, body: input.body, createdAt: Date.now(), imageUrl: hosted?.url, imagePublicId: hosted?.publicId });
+      if (image && !hosted) postsRepo.insertImage(id, image.mime, image.data);
     });
     bus.emit('feed:changed');
     return present(viewer, [find(viewer, id)])[0]!;
@@ -82,6 +95,7 @@ export const feedService = {
     const p = find(viewer, id);
     if (!canDelete(viewer, p)) throw forbidden('Only the author or an admin can delete this post');
     postsRepo.delete(id);
+    if (p.imagePublicId) void cloudinary.destroy(p.imagePublicId);
     bus.emit('feed:changed');
   },
 };

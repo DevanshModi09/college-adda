@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -237,6 +238,48 @@ describe('feed', () => {
     assert.deepEqual(feed.slice(0, 2).map((p: { id: string }) => p.id), [photo.json.id, text.json.id]);
     assert.equal((await call(b.cookie, `/feed/${text.json.id}`, 'DELETE')).status, 403);
     assert.equal((await call(a.cookie, `/feed/${text.json.id}`, 'DELETE')).status, 204);
+  });
+});
+
+describe('feed photos on Cloudinary', () => {
+  const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+  it('uploads signed to Cloudinary when configured, stores the URL, and deletes it with the post', async () => {
+    const realFetch = globalThis.fetch;
+    const hits: { action: string; form: FormData }[] = [];
+    // Stand-in for Cloudinary's API that checks signatures the way Cloudinary does.
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (!url.startsWith('https://api.cloudinary.com/')) return realFetch(input, init);
+      const form = init!.body as FormData;
+      const signed = [...form.keys()].filter((k) => !['file', 'api_key', 'signature'].includes(k)).sort();
+      const expected = crypto.createHash('sha1').update(signed.map((k) => `${k}=${form.get(k)}`).join('&') + 'shh-secret').digest('hex');
+      assert.equal(url.split('/')[4], 'demo-cloud');
+      assert.equal(form.get('api_key'), '1234');
+      assert.equal(form.get('signature'), expected, 'request must be signed with the API secret');
+      const action = url.endsWith('/upload') ? 'upload' : 'destroy';
+      hits.push({ action, form });
+      const body = action === 'upload' ? { secure_url: 'https://res.cloudinary.com/demo-cloud/image/upload/v1/college-adda/feed/abc.png', public_id: 'college-adda/feed/abc' } : { result: 'ok' };
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch;
+    process.env.CLOUDINARY_URL = 'cloudinary://1234:shh-secret@demo-cloud';
+    try {
+      const a = await register('cloud_cy', 'Cy');
+      const post = await call(a.cookie, '/feed', 'POST', { body: 'sunset from the canteen', image: `data:image/png;base64,${PNG}` });
+      assert.equal(post.status, 201);
+      assert.equal(post.json.image, 'https://res.cloudinary.com/demo-cloud/image/upload/v1/college-adda/feed/abc.png');
+      assert.equal(hits[0]?.action, 'upload');
+      assert.equal(hits[0]?.form.get('folder'), 'college-adda/feed');
+      assert.equal((await call(a.cookie, `/feed/${post.json.id}/image`)).status, 404, 'nothing stored locally');
+
+      assert.equal((await call(a.cookie, `/feed/${post.json.id}`, 'DELETE')).status, 204);
+      await new Promise((r) => setTimeout(r, 20));
+      assert.equal(hits[1]?.action, 'destroy');
+      assert.equal(hits[1]?.form.get('public_id'), 'college-adda/feed/abc');
+    } finally {
+      delete process.env.CLOUDINARY_URL;
+      globalThis.fetch = realFetch;
+    }
   });
 });
 

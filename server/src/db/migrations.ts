@@ -272,4 +272,10 @@ export const migrations: string[] = [
     PRIMARY KEY (post_id, user_id)
   );
   `,
+
+  // 11: feed photos can live on Cloudinary instead of post_images (when CLOUDINARY_URL is set).
+  `
+  ALTER TABLE posts ADD COLUMN image_url TEXT;
+  ALTER TABLE posts ADD COLUMN image_public_id TEXT;
+  `,
 ];

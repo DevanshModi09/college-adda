@@ -16,6 +16,10 @@ services:
         value: "24"
       - key: ADMIN_USERNAMES
         value: devansh
+      # Feed photos: cloudinary://<api_key>:<api_secret>@<cloud_name> (Cloudinary dashboard > API Keys).
+      # Render asks for the value when you apply the blueprint; leave it empty to keep photos in SQLite.
+      - key: CLOUDINARY_URL
+        sync: false
     # disk:
     #   name: adda-data
     #   mountPath: /opt/render/project/src/server/data

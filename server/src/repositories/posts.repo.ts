@@ -7,7 +7,11 @@ export interface PostRecord {
   createdAt: number;
   likes: number;
   liked: boolean;
+  /** Photo stored in SQLite (post_images). */
   hasImage: boolean;
+  /** Photo hosted on Cloudinary. */
+  imageUrl: string | null;
+  imagePublicId: string | null;
 }
 
 interface Row {
@@ -18,6 +22,8 @@ interface Row {
   likes: number;
   liked: number;
   has_image: number;
+  image_url: string | null;
+  image_public_id: string | null;
 }
 
 const toRecord = (r: Row): PostRecord => ({
@@ -28,6 +34,8 @@ const toRecord = (r: Row): PostRecord => ({
   likes: r.likes,
   liked: r.liked === 1,
   hasImage: r.has_image === 1,
+  imageUrl: r.image_url,
+  imagePublicId: r.image_public_id,
 });
 
 // Like count and "did the viewer like it" come back with each post in one query.
@@ -52,8 +60,10 @@ export const postsRepo = {
     return row ? toRecord(row) : null;
   },
 
-  insert(p: { id: string; authorId: string; body: string; createdAt: number }): void {
-    db().prepare('INSERT INTO posts (id, author_id, body, created_at) VALUES (?, ?, ?, ?)').run(p.id, p.authorId, p.body, p.createdAt);
+  insert(p: { id: string; authorId: string; body: string; createdAt: number; imageUrl?: string; imagePublicId?: string }): void {
+    db()
+      .prepare('INSERT INTO posts (id, author_id, body, created_at, image_url, image_public_id) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(p.id, p.authorId, p.body, p.createdAt, p.imageUrl ?? null, p.imagePublicId ?? null);
   },
 
   insertImage(postId: string, mime: string, data: Uint8Array): void {
