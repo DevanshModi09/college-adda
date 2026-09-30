@@ -4,7 +4,7 @@ import { env } from '../config/env.ts';
 import { optionalAuth, requireAuth } from '../middleware/auth.ts';
 import { authController } from '../controllers/auth.controller.ts';
 import { assignmentsController, attendanceController, deadlinesController, timetableController } from '../controllers/planner.controller.ts';
-import { eventsController, feedController, friendsController, messagesController, noticesController, peopleController, roomsController } from '../controllers/social.controller.ts';
+import { eventsController, feedController, friendsController, lostFoundController, messagesController, noticesController, peopleController, roomsController } from '../controllers/social.controller.ts';
 
 const limiter = (windowMs: number, limit: number) =>
   rateLimit({
@@ -54,6 +54,11 @@ export function apiRouter(): Router {
   api.post('/feed/:id/like', feedController.like);
   api.get('/feed/:id/image', feedController.image);
   api.delete('/feed/:id', feedController.remove);
+
+  api.get('/lostfound', lostFoundController.list);
+  api.post('/lostfound', postLimiter, lostFoundController.create);
+  api.patch('/lostfound/:id', lostFoundController.resolve);
+  api.delete('/lostfound/:id', lostFoundController.remove);
 
   api.get('/notices', noticesController.list);
   api.post('/notices', noticesController.create);

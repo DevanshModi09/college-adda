@@ -245,6 +245,33 @@ describe('feed', () => {
   });
 });
 
+describe('lost & found', () => {
+  it('pins items on the map, lets only the owner resolve or delete, and caps open pins', async () => {
+    const a = await register('lf_ira', 'Ira');
+    const b = await register('lf_jay', 'Jay');
+
+    const pin = await call(a.cookie, '/lostfound', 'POST', { kind: 'lost', title: 'Blue water bottle', details: 'Milton, has stickers', x: 40.5, y: 12.2, place: 'LIBRARY' });
+    assert.equal(pin.status, 201);
+    assert.deepEqual([pin.json.kind, pin.json.place, pin.json.resolved, pin.json.canEdit, pin.json.author.username], ['lost', 'LIBRARY', false, true, 'lf_ira']);
+    assert.equal((await call(a.cookie, '/lostfound', 'POST', { kind: 'stolen', title: 'x', x: 1, y: 1 })).status, 400);
+    assert.equal((await call(a.cookie, '/lostfound', 'POST', { kind: 'found', title: 'x', x: 9999, y: 1 })).status, 400);
+
+    const seen = (await call(b.cookie, '/lostfound')).json.find((p: { id: string }) => p.id === pin.json.id);
+    assert.equal(seen.canEdit, false);
+    assert.equal((await call(b.cookie, `/lostfound/${pin.json.id}`, 'PATCH', { resolved: true })).status, 403);
+    assert.equal((await call(b.cookie, `/lostfound/${pin.json.id}`, 'DELETE')).status, 403);
+
+    const done = await call(a.cookie, `/lostfound/${pin.json.id}`, 'PATCH', { resolved: true });
+    assert.equal(done.json.resolved, true);
+    assert.ok((await call(b.cookie, '/lostfound')).json.some((p: { id: string; resolved: boolean }) => p.id === pin.json.id && p.resolved), 'recently resolved pins stay listed');
+
+    for (let i = 0; i < 10; i++) assert.equal((await call(b.cookie, '/lostfound', 'POST', { kind: 'found', title: `thing ${i}`, x: 5, y: 5 })).status, 201);
+    assert.equal((await call(b.cookie, '/lostfound', 'POST', { kind: 'found', title: 'one too many', x: 5, y: 5 })).status, 400);
+
+    assert.equal((await call(a.cookie, `/lostfound/${pin.json.id}`, 'DELETE')).status, 204);
+  });
+});
+
 describe('feed photos on Cloudinary', () => {
   const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 

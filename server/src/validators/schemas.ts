@@ -172,6 +172,17 @@ export const postCreateSchema = z.object({
   image: z.string().max(2_200_000).optional(),
 });
 
+export const pinCreateSchema = z.object({
+  kind: z.enum(['lost', 'found']),
+  title: required(60, 'What it is'),
+  details: text(300).default(''),
+  x: z.number().min(0),
+  y: z.number().min(0),
+  place: text(30).default(''),
+});
+
+export const pinResolveSchema = z.object({ resolved: z.boolean() });
+
 export const feedQuerySchema = z.object({
   before: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(30),

@@ -50,6 +50,7 @@ model User {
   notices            Notice[]
   posts              Post[]
   postLikes          PostLike[]
+  lostFound          LostFound[]
 
   @@map("users")
 }
@@ -304,4 +305,21 @@ model PostImage {
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@map("post_images")
+}
+
+model LostFound {
+  id        String  @id
+  userId    String  @map("user_id")
+  kind      String // 'lost' | 'found'
+  title     String
+  details   String  @default("")
+  x         Float
+  y         Float
+  place     String  @default("")
+  resolved  Boolean @default(false)
+  createdAt BigInt  @map("created_at")
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@map("lost_found")
 }

@@ -9,6 +9,7 @@ import type {
   ClassSlot,
   Conversation,
   Deadline,
+  LostFoundPin,
   DirectMessage,
   FreeRooms,
   FriendStatus,
@@ -110,6 +111,8 @@ export interface PeopleQuery {
 
 type UserRes = { user: PublicUser };
 
+export type PinBody = Pick<LostFoundPin, 'kind' | 'title' | 'details' | 'x' | 'y' | 'place'>;
+
 export const api = {
   auth: {
     me: () => get<UserRes>('/me').then((r) => r.user),
@@ -181,6 +184,12 @@ export const api = {
     create: (body: { body: string; image?: string }) => post<Post>('/feed', body),
     like: (id: string) => post<Post>(`/feed/${id}/like`),
     remove: (id: string) => del(`/feed/${id}`),
+  },
+  lostFound: {
+    list: () => get<LostFoundPin[]>('/lostfound'),
+    create: (body: PinBody) => post<LostFoundPin>('/lostfound', body),
+    resolve: (id: string, resolved: boolean) => patch<LostFoundPin>(`/lostfound/${id}`, { resolved }),
+    remove: (id: string) => del(`/lostfound/${id}`),
   },
   notices: {
     list: (sectionKey?: string) => get<Notice[]>(`/notices${sectionKey ? `?section=${encodeURIComponent(sectionKey)}` : ''}`),

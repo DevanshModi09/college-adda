@@ -8,6 +8,7 @@ interface BusEvents {
   'deadlines:changed': [];
   'notices:changed': [{ sectionKey: string }];
   'feed:changed': [];
+  'lostfound:changed': [];
   'rooms:changed': [];
   'friends:changed': [{ to: string; kind: 'request' | 'accepted' | 'removed'; from: PublicUser }];
 }

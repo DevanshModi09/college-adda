@@ -7,6 +7,7 @@ import { roomsService } from '../services/rooms.service.ts';
 import { eventsService } from '../services/events.service.ts';
 import { noticesService } from '../services/notices.service.ts';
 import { feedService } from '../services/feed.service.ts';
+import { lostFoundService } from '../services/lostfound.service.ts';
 import {
   dmQuerySchema,
   dmSendSchema,
@@ -16,6 +17,8 @@ import {
   idParam,
   noticeCreateSchema,
   noticePinSchema,
+  pinCreateSchema,
+  pinResolveSchema,
   peopleQuerySchema,
   roomCreateSchema,
   timetableQuerySchema,
@@ -128,6 +131,22 @@ export const feedController = {
   },
   async remove(req: Request, res: Response) {
     await feedService.remove(currentUser(req), idParam.parse(req.params).id);
+    res.status(204).end();
+  },
+};
+
+export const lostFoundController = {
+  async list(req: Request, res: Response) {
+    res.json(await lostFoundService.list(currentUser(req)));
+  },
+  async create(req: Request, res: Response) {
+    res.status(201).json(await lostFoundService.create(currentUser(req), pinCreateSchema.parse(req.body)));
+  },
+  async resolve(req: Request, res: Response) {
+    res.json(await lostFoundService.setResolved(currentUser(req), idParam.parse(req.params).id, pinResolveSchema.parse(req.body).resolved));
+  },
+  async remove(req: Request, res: Response) {
+    await lostFoundService.remove(currentUser(req), idParam.parse(req.params).id);
     res.status(204).end();
   },
 };

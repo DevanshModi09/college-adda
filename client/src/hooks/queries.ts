@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { AssignmentStatus, AttendanceStatus, CampusEvent, ClassSlot, Deadline, Post, SubjectAssignments } from '@adda/shared';
-import { api, type ClassBody, type DeadlineBody, type EventBody, type PeopleQuery, type RoomBody } from '../lib/api';
+import type { AssignmentStatus, AttendanceStatus, CampusEvent, ClassSlot, Deadline, LostFoundPin, Post, SubjectAssignments } from '@adda/shared';
+import { api, type ClassBody, type DeadlineBody, type EventBody, type PeopleQuery, type PinBody, type RoomBody } from '../lib/api';
 import { keys, queryClient } from '../lib/queryClient';
 import { toast } from '../stores/toasts';
 
@@ -275,5 +275,31 @@ export const useDeletePost = () =>
   useMutation({
     mutationFn: (id: string) => api.feed.remove(id),
     onSuccess: (_r, id) => queryClient.setQueryData<Post[]>(keys.feed, (prev) => prev?.filter((p) => p.id !== id)),
+    onError,
+  });
+
+// ---------- lost & found ----------
+export const useLostFound = () => useQuery({ queryKey: keys.lostFound, queryFn: api.lostFound.list });
+
+const setPins = (fn: (list: LostFoundPin[]) => LostFoundPin[]) => queryClient.setQueryData<LostFoundPin[]>(keys.lostFound, (prev) => fn(prev ?? []));
+
+export const useCreatePin = () =>
+  useMutation({
+    mutationFn: (body: PinBody) => api.lostFound.create(body),
+    onSuccess: (p) => setPins((list) => [p, ...list.filter((x) => x.id !== p.id)]),
+    onError,
+  });
+
+export const useResolvePin = () =>
+  useMutation({
+    mutationFn: ({ id, resolved }: { id: string; resolved: boolean }) => api.lostFound.resolve(id, resolved),
+    onSuccess: (p) => setPins((list) => list.map((x) => (x.id === p.id ? p : x))),
+    onError,
+  });
+
+export const useDeletePin = () =>
+  useMutation({
+    mutationFn: (id: string) => api.lostFound.remove(id),
+    onSuccess: (_r, id) => setPins((list) => list.filter((p) => p.id !== id)),
     onError,
   });

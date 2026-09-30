@@ -19,6 +19,7 @@ export const keys = {
   events: ['events'] as const,
   notices: (sectionKey: string) => ['notices', sectionKey] as const,
   feed: ['feed'] as const,
+  lostFound: ['lost-found'] as const,
 };
 
 // A 401 anywhere means the session is gone (expired, logged out in another tab):

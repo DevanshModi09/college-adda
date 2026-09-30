@@ -31,6 +31,16 @@ export const fmtShortDate = (t: number) => {
   const d = new Date(t);
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
 };
+/** "5M AGO", "2H AGO", then the date after a week. */
+export function ago(t: number, now: number): string {
+  const s = Math.max(0, Math.round((now - t) / 1000));
+  if (s < 60) return 'JUST NOW';
+  if (s < 3600) return `${Math.floor(s / 60)}M AGO`;
+  if (s < 86400) return `${Math.floor(s / 3600)}H AGO`;
+  if (s < 7 * 86400) return `${Math.floor(s / 86400)}D AGO`;
+  return fmtShortDate(t);
+}
+
 export const fmtTime = (t: number) => {
   const d = new Date(t);
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;

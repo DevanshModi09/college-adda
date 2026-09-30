@@ -83,6 +83,25 @@ export interface Post {
   createdAt: number;
 }
 
+/** Something lost or found, pinned where it happened on the campus map. */
+export interface LostFoundPin {
+  id: string;
+  kind: 'lost' | 'found';
+  title: string;
+  details: string;
+  /** Tile position on the campus map. */
+  x: number;
+  y: number;
+  /** Map area it was pinned in, e.g. 'LIBRARY'. */
+  place: string;
+  /** Returned to its owner / owner found it: kept for a week, off the map. */
+  resolved: boolean;
+  author: PublicUser | null;
+  /** Viewer may resolve or delete it (the author, or an admin). */
+  canEdit: boolean;
+  createdAt: number;
+}
+
 /** A class section: branch + year + letter. `key` is 'CSE|3|B'. */
 export interface Section {
   key: string;
@@ -338,6 +357,7 @@ export type ServerMessage =
   | { type: 'deadlines:changed' }
   | { type: 'notices:changed'; sectionKey: string }
   | { type: 'feed:changed' }
+  | { type: 'lostfound:changed' }
   | { type: 'friends:changed'; kind: 'request' | 'accepted' | 'removed'; from: PublicUser }
   | { type: 'error'; error: string }
   | { type: 'world:state'; players: WorldPlayer[]; you: WorldPlayer; plates: Record<string, Plate[]> }
