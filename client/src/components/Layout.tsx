@@ -1,4 +1,4 @@
-import { NavLink, Link, Outlet } from 'react-router';
+import { NavLink, Link, Outlet, useLocation } from 'react-router';
 import type { PublicUser } from '@adda/shared';
 import { useConversations, useDeadlines, useFriends } from '../hooks/queries';
 import { useDeadlineNudges } from '../hooks/useDeadlineNudges';
@@ -18,7 +18,6 @@ const LINKS = [
   { to: '/attendance', label: 'ATTENDANCE' },
   { to: '/desks', label: 'CODE DESK' },
   { to: '/people', label: 'PEOPLE' },
-  { to: '/chat', label: 'CHATS' },
   { to: '/events', label: 'EVENTS' },
 ];
 
@@ -28,6 +27,7 @@ export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => v
   const { data: convos } = useConversations();
   const unread = convos?.reduce((n, c) => n + c.unread, 0) ?? 0;
   const requests = useFriends().data?.incoming.length ?? 0;
+  const onChat = useLocation().pathname.startsWith('/chat');
   useDeadlineNudges();
 
   return (
@@ -44,11 +44,6 @@ export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => v
               {l.to === '/people' && requests > 0 && (
                 <span className="nav__badge" aria-label={`${requests} friend requests`}>
                   {requests}
-                </span>
-              )}
-              {l.to === '/chat' && unread > 0 && (
-                <span className="nav__badge" aria-label={`${unread} unread`}>
-                  {unread}
                 </span>
               )}
             </NavLink>
@@ -80,8 +75,22 @@ export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => v
       <main className="main">
         <Outlet />
       </main>
+      {!onChat && <ChatButton unread={unread} />}
       <Toaster />
       <GameModal me={user} />
     </div>
+  );
+}
+
+/** Floating chat button, bottom right: opens the chats page and shows the unread count. */
+function ChatButton({ unread }: { unread: number }) {
+  return (
+    <Link to="/chat" className="chat-fab" aria-label={unread ? `Chats, ${unread} unread` : 'Chats'} title="Chats">
+      <svg viewBox="0 0 16 16" width="28" height="28" shapeRendering="crispEdges" aria-hidden="true">
+        <path fill="currentColor" d="M2 2h12v1h1v8h-1v1H7l-3 3v-3H2v-1H1V3h1z" />
+        <path fill="var(--cyan)" d="M4 6h2v2H4zM7 6h2v2H7zM10 6h2v2h-2z" />
+      </svg>
+      {unread > 0 && <span className="chat-fab__badge">{unread > 99 ? '99+' : unread}</span>}
+    </Link>
   );
 }
