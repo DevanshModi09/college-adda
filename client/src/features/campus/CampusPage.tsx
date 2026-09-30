@@ -29,6 +29,23 @@ const KEYMAP: Record<string, string> = {
   D: 'right',
 };
 
+// Whether the nearby-chat panel is shown; remembered per browser.
+const CHAT_PREF = 'campus-chat';
+const readChatPref = () => {
+  try {
+    return localStorage.getItem(CHAT_PREF) !== 'off';
+  } catch {
+    return true;
+  }
+};
+const saveChatPref = (open: boolean) => {
+  try {
+    localStorage.setItem(CHAT_PREF, open ? 'on' : 'off');
+  } catch {
+    // private mode etc.: it just won't be remembered
+  }
+};
+
 interface ChatLine {
   id: number;
   name: string;
@@ -48,6 +65,19 @@ export function CampusPage({ me }: { me: PublicUser }) {
   const [players, setPlayers] = useState<WorldPlayer[]>([]);
   const [picked, setPicked] = useState<WorldPlayer | null>(null);
   const [log, setLog] = useState<ChatLine[]>([]);
+  const [chatOpen, setChatOpen] = useState(readChatPref);
+  const [unseen, setUnseen] = useState(0);
+  const chatOpenRef = useRef(chatOpen);
+  chatOpenRef.current = chatOpen;
+  const focusChat = useRef(false);
+
+  // Focus the input once it's actually rendered (it doesn't exist while the chat is hidden).
+  useEffect(() => {
+    if (chatOpen && focusChat.current) {
+      focusChat.current = false;
+      chatRef.current?.focus();
+    }
+  }, [chatOpen]);
   const sitRef = useRef(() => {});
 
   // Boot: wait for the pixel fonts (map signs are baked into the prerender), then start the loop.
@@ -73,6 +103,7 @@ export function CampusPage({ me }: { me: PublicUser }) {
           engine?.apply(msg);
           if (msg.type === 'world:say') {
             setLog((l) => [...l.slice(-5), { id: ++seq, name: msg.name.split(' ')[0]!, text: msg.text, self: msg.userId === me.id }]);
+            if (!chatOpenRef.current && msg.userId !== me.id) setUnseen((n) => n + 1);
           }
         });
         engine.start();
@@ -102,7 +133,7 @@ export function CampusPage({ me }: { me: PublicUser }) {
       }
       if (e.key === 'Enter') {
         e.preventDefault();
-        chatRef.current?.focus();
+        openChat(true);
         return;
       }
       if ((e.key === 'e' || e.key === 'E') && !e.repeat) {
@@ -134,6 +165,19 @@ export function CampusPage({ me }: { me: PublicUser }) {
   };
 
   sitRef.current = sit;
+
+  function openChat(focus = false) {
+    setUnseen(0);
+    saveChatPref(true);
+    if (focus && chatRef.current) chatRef.current.focus(); // already open
+    else if (focus) focusChat.current = true; // focus after it renders
+    setChatOpen(true);
+  }
+
+  const hideChat = () => {
+    setChatOpen(false);
+    saveChatPref(false);
+  };
 
   const say = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -208,21 +252,31 @@ export function CampusPage({ me }: { me: PublicUser }) {
         </button>
       )}
 
-      <div className="campus__chat">
-        {log.length > 0 && (
-          <ol className="campus__log" aria-live="polite">
-            {log.map((l) => (
-              <li key={l.id}>
-                <span className={l.self ? 'c-yellow' : 'c-cyan'}>{l.self ? 'YOU' : l.name.toUpperCase()}:</span> {l.text}
-              </li>
-            ))}
-          </ol>
-        )}
-        <form className="row" onSubmit={say}>
-          <input ref={chatRef} className="input" maxLength={140} placeholder="Press Enter to talk to people nearby…" aria-label="Say something nearby" autoComplete="off" />
-          <button className="btn btn--sm">SAY</button>
-        </form>
-      </div>
+      {chatOpen ? (
+        <div className="campus__chat">
+          {log.length > 0 && (
+            <ol className="campus__log" aria-live="polite">
+              {log.map((l) => (
+                <li key={l.id}>
+                  <span className={l.self ? 'c-yellow' : 'c-cyan'}>{l.self ? 'YOU' : l.name.toUpperCase()}:</span> {l.text}
+                </li>
+              ))}
+            </ol>
+          )}
+          <form className="row" onSubmit={say}>
+            <input ref={chatRef} className="input" maxLength={140} placeholder="Press Enter to talk to people nearby…" aria-label="Say something nearby" autoComplete="off" />
+            <button className="btn btn--sm">SAY</button>
+            <button type="button" className="btn btn--ghost btn--sm" onClick={hideChat} title="Hide chat (Enter brings it back)">
+              HIDE
+            </button>
+          </form>
+        </div>
+      ) : (
+        <button type="button" className="btn btn--sm campus__chat-toggle" onClick={() => openChat(true)} aria-label={unseen ? `Show chat, ${unseen} new` : 'Show chat'}>
+          CHAT
+          {unseen > 0 && <span className="campus__chat-new">{unseen > 9 ? '9+' : unseen}</span>}
+        </button>
+      )}
 
       <div className="campus__pad" aria-hidden="true">
         <button type="button" className="pad pad--up" {...pad('up')}>▲</button>
