@@ -10,13 +10,13 @@ import { GameModal } from './GameModal';
 const LINKS = [
   { to: '/campus', label: 'CAMPUS' },
   { to: '/feed', label: 'FEED' },
+  { to: '/events', label: 'EVENTS' },
+  { to: '/people', label: 'PEOPLE' },
   { to: '/deadlines', label: 'DEADLINES' },
   { to: '/assignments', label: 'ASSIGNMENTS' },
   { to: '/timetable', label: 'TIMETABLE' },
   { to: '/attendance', label: 'ATTENDANCE' },
   { to: '/desks', label: 'CODE DESK' },
-  { to: '/people', label: 'PEOPLE' },
-  { to: '/events', label: 'EVENTS' },
 ];
 
 export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => void }) {
