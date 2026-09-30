@@ -181,6 +181,27 @@ textarea {
 .nav a.active::before {
   content: '▶ ';
 }
+/* The pixelverse is the headline feature, so its link glows. */
+.nav a.nav__glow {
+  color: var(--pink);
+  animation: nav-glow 2.4s ease-in-out infinite;
+}
+.nav a.nav__glow.active {
+  color: var(--yellow);
+}
+@keyframes nav-glow {
+  0%,
+  100% {
+    text-shadow:
+      0 0 4px rgba(255, 62, 165, 0.9),
+      0 0 12px rgba(255, 62, 165, 0.6);
+  }
+  50% {
+    text-shadow:
+      0 0 6px rgba(62, 242, 224, 0.9),
+      0 0 18px rgba(62, 242, 224, 0.6);
+  }
+}
 .nav__badge {
   display: inline-block;
   min-width: 20px;
@@ -809,6 +830,10 @@ a.line:hover {
 @media (prefers-reduced-motion: reduce) {
   .blink {
     animation: none;
+  }
+  .nav a.nav__glow {
+    animation: none;
+    text-shadow: 0 0 8px rgba(255, 62, 165, 0.7);
   }
   .bar__fill {
     transition: none;

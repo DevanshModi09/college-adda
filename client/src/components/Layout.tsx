@@ -8,8 +8,8 @@ import { Toaster } from './Toaster';
 import { GameModal } from './GameModal';
 
 const LINKS = [
-  { to: '/feed', label: 'FEED' },
   { to: '/campus', label: 'CAMPUS' },
+  { to: '/feed', label: 'FEED' },
   { to: '/deadlines', label: 'DEADLINES' },
   { to: '/assignments', label: 'ASSIGNMENTS' },
   { to: '/timetable', label: 'TIMETABLE' },
@@ -37,7 +37,7 @@ export function Layout({ user, onLogout }: { user: PublicUser; onLogout: () => v
         </Link>
         <nav className="nav" aria-label="Main">
           {LINKS.map((l) => (
-            <NavLink key={l.to} to={l.to}>
+            <NavLink key={l.to} to={l.to} className={l.to === '/campus' ? 'nav__glow' : undefined}>
               {l.label}
               {l.to === '/people' && requests > 0 && (
                 <span className="nav__badge" aria-label={`${requests} friend requests`}>

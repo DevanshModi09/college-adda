@@ -29,6 +29,22 @@ export function HomePage({ user }: { user: PublicUser }) {
 
   return (
     <div className="home">
+      <section className="panel panel--pink home__verse" aria-label="The Pixelverse">
+        <div className="grow">
+          <p className="px-xs c-cyan">THE PIXELVERSE</p>
+          <h1 className="home__verse-title upper">JECRC, in pixels.</h1>
+          <p className="muted">Walk the campus with whoever's online. Grab chai on Food Street, sit down at a café, or challenge someone in the Game Zone.</p>
+        </div>
+        <div className="home__verse-cta">
+          <Link to="/campus" className="btn btn--pink home__verse-btn">
+            ▶ ENTER PIXELVERSE
+          </Link>
+          <span className="muted">
+            <span className="live-dot" /> {onlineCount} ONLINE NOW
+          </span>
+        </div>
+      </section>
+
       <div className="home__xp">
         <span className="px-sm c-cyan">QUESTS CLEARED</span>
         <div className="grow">
